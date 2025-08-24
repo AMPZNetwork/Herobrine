@@ -1,0 +1,4 @@
+rootProject.name = 'Herobrine'
+
+include(':japi')
+include(':Herobrine')
