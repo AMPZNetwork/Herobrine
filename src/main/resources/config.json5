@@ -1,0 +1,41 @@
+{
+  "database": {
+    "uri": "jdbc:mariadb://localhost:3306/dev",
+    "username": "dev",
+    "password": "dev"
+  },
+  "discord": {
+    "modules": {
+      "log": {
+        "enable": true,
+        "name": "log"
+      },
+      "rabbitmq": {
+        "enable": true,
+        "name": "rabbitmq",
+        "rabbitUri": "amqp://guest:guest@localhost:5672",
+        "exchange": "minecraft.chat"
+      },
+      "aurionchat": {
+        "enable": true,
+        "name": "aurionchat",
+        "rabbitUri": "amqp://guest:guest@localhost:5672",
+        "exchange": "aurion.chat",
+        "contentPattern": "\\[[\\w&§]+]\\s[\\w&§]+\\s[\\w-_&§]+:\\s(.*)"
+      },
+      "discord": {
+        "enable": false,
+        "name": "discord",
+        "token": "<token>"
+      },
+    },
+    "channels": [
+      {
+        "enable": true,
+        "name": "global",
+        "alias": "g",
+        "publish": true
+      }
+    ]
+  }
+}

@@ -60,6 +60,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+    implementation 'org.mariadb.jdbc:mariadb-java-client'
+    implementation 'org.hibernate:hibernate-core:6.6.26.Final' // version bump
 
     // website
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -76,8 +78,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-
-    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
 
     providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

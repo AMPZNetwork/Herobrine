@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine;
 
+import com.ampznetwork.herobrine.discord.DiscordBotProvider;
 import com.ampznetwork.herobrine.model.cfg.Config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -7,24 +8,24 @@ import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.requests.GatewayIntent;
-import org.comroid.api.config.ConfigurationManager;
-import org.comroid.api.func.ext.Context;
 import org.comroid.api.io.FileFlag;
+import org.comroid.api.java.ResourceLoader;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
+import org.mariadb.jdbc.Driver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.sql.Driver;
+import java.io.IOException;
 
 @SpringBootApplication
+@EnableJpaRepositories(basePackages = "com.ampznetwork.herobrine.repo")
 public class Program {
     private static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
@@ -51,21 +52,15 @@ public class Program {
     }
 
     @Bean
-    public File configFile(@Autowired File botDir) {
-        return new File(botDir, "config.json");
+    public File configFile(@Autowired File botDir) throws IOException {
+        var file = new File(botDir, "config.json5");
+        ResourceLoader.assertFile(Program.class, "/config.json5", file, null);
+        return file;
     }
 
     @Bean
-    public ConfigurationManager<Config> configManager(
-            @Autowired Context context,
-            @Autowired File configFile
-    ) {
-        return new ConfigurationManager<>(context, Config.class, configFile.getAbsolutePath());
-    }
-
-    @Bean
-    public Config config(@Autowired ConfigurationManager<Config> configManager) {
-        return configManager.initialize();
+    public Config config(@Autowired ObjectMapper objectMapper, @Autowired File configFile) throws IOException {
+        return objectMapper.readValue(configFile, Config.class);
     }
 
     @Bean
@@ -79,12 +74,6 @@ public class Program {
     }
 
     @Bean
-    public JDA jda(@Autowired Config config) {
-        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS))
-                .build();
-    }
-
-    @Bean
     public CommandManager cmdr() {
         var cmdr = new CommandManager();
         cmdr.addChild(this);
@@ -92,6 +81,11 @@ public class Program {
         cmdr.register(this);
 
         return cmdr;
+    }
+
+    @Bean
+    public JDA jda(@Autowired DiscordBotProvider provider) {
+        return provider.getDefaultModule().getJda();
     }
 
     @Bean
