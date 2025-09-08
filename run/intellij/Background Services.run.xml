@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+    <configuration default="false" name="Background Services" type="docker-deploy" factoryName="docker-compose.yml" server-name="docker@local">
+        <deployment type="docker-compose.yml">
+            <settings>
+                <option name="removeOrphansOnComposeDown" value="false"/>
+                <option name="commandLineOptions" value="--build"/>
+                <option name="sourceFilePath" value="run/docker-compose-background.yml"/>
+            </settings>
+        </deployment>
+        <method v="2"/>
+    </configuration>
+</component>
