@@ -9,7 +9,9 @@ import com.ampznetwork.libmod.api.interop.game.PlayerIdentifierAdapter;
 import com.ampznetwork.libmod.api.model.info.ServerInfoProvider;
 import jakarta.annotation.PostConstruct;
 import lombok.Value;
+import org.comroid.api.func.ext.Wrap;
 import org.comroid.api.tree.Container;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -44,8 +46,26 @@ public class DiscordBotProvider extends Container.Base implements ModuleContaine
     }
 
     @Override
+    public <T> Stream<T> streamChildren(@Nullable Class<? super T> type) {
+        // fsr this is needed as an inheritance fix
+        return super.streamChildren(type);
+    }
+
+    @Override
     public Stream<Object> streamOwnChildren() {
         return Stream.of(lib, playerAdapter, config);
+    }
+
+    @Override
+    public <T> Stream<T> children(@Nullable Class<? super T> type) {
+        // fsr this is needed as an inheritance fix
+        return super.children(type);
+    }
+
+    @Override
+    public <T> Wrap<T> child(@Nullable Class<? super T> type) {
+        // fsr this is needed as an inheritance fix
+        return super.child(type);
     }
 
     @Override
