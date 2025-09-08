@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'war'
+    //id 'war'
     id 'org.springframework.boot' version '3.4.5'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.asciidoctor.jvm.convert' version '3.3.2'
@@ -15,7 +15,7 @@ configurations {
         extendsFrom annotationProcessor
     }
 }
-
+/*
 tasks.named('asciidoctor') {
     inputs.dir snippetsDir
     dependsOn test
@@ -24,6 +24,7 @@ tasks.named('asciidoctor') {
 ext {
     set('snippetsDir', file("build/generated-snippets"))
 }
+ */
 
 java {
     toolchain {
@@ -50,7 +51,7 @@ dependencies {
     implementation 'net.dv8tion:JDA:+'
 
     // dev
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    //developmentOnly 'org.springframework.boot:spring-boot-devtools' <- doesnt work fsr with this loader config
     developmentOnly 'org.springframework.boot:spring-boot-starter-actuator'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -59,27 +60,27 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-rest'
-    implementation 'org.mariadb.jdbc:mariadb-java-client'
+    //implementation 'org.springframework.boot:spring-boot-starter-data-rest'
     implementation 'org.hibernate:hibernate-core:6.6.26.Final' // version bump
+    implementation 'org.mariadb.jdbc:mariadb-java-client'
 
     // website
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-websocket'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    //implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    //implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
     // security
     implementation 'org.springframework.session:spring-session-jdbc'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+    //implementation 'org.springframework.boot:spring-boot-starter-security'
+    //implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    //implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
 
     // utility
-    implementation 'org.springframework.boot:spring-boot-starter-mail'
-    implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    //implementation 'org.springframework.boot:spring-boot-starter-mail'
+    //implementation 'org.springframework.boot:spring-boot-starter-amqp'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
-    providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+    //providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.amqp:spring-rabbit-test'
     testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'

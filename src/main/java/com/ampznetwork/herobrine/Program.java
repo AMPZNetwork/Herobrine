@@ -1,6 +1,7 @@
 package com.ampznetwork.herobrine;
 
 import com.ampznetwork.herobrine.discord.DiscordBotProvider;
+import com.ampznetwork.herobrine.haste.HasteService;
 import com.ampznetwork.herobrine.model.cfg.Config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -10,8 +11,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.dv8tion.jda.api.JDA;
 import org.comroid.api.io.FileFlag;
 import org.comroid.api.java.ResourceLoader;
+import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
+import org.jetbrains.annotations.Nullable;
 import org.mariadb.jdbc.Driver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -31,6 +34,15 @@ public class Program {
 
     public static void main(String[] args) {
         SpringApplication.run(Program.class, args);
+    }
+
+    @Command(permission = "8")
+    public static String shutdown(
+            @Command.Arg(value = "purgecommands", required = false) @Nullable Boolean purgeCommands
+    ) {
+        if (Boolean.TRUE.equals(purgeCommands)) FileFlag.enable(COMMAND_PURGE_FILE);
+        System.exit(0);
+        return "Goodbye";
     }
 
     @Bean
@@ -74,18 +86,21 @@ public class Program {
     }
 
     @Bean
-    public CommandManager cmdr() {
+    public CommandManager cmdr(@Autowired HasteService haste) {
         var cmdr = new CommandManager();
         cmdr.addChild(this);
 
         cmdr.register(this);
+        cmdr.register(haste);
 
         return cmdr;
     }
 
     @Bean
-    public JDA jda(@Autowired DiscordBotProvider provider) {
-        return provider.getDefaultModule().getJda();
+    public JDA jda(@Autowired DiscordBotProvider provider, @Autowired HasteService haste) {
+        var jda = provider.getDefaultModule().getJda();
+        jda.addEventListener(haste);
+        return jda;
     }
 
     @Bean
@@ -94,6 +109,7 @@ public class Program {
         try {
             var adp = new JdaCommandAdapter(cmdr, jda.awaitReady());
             adp.setPurgeCommands(FileFlag.consume(COMMAND_PURGE_FILE));
+            cmdr.addChild(adp);
             return adp;
         } finally {
             cmdr.initialize();
