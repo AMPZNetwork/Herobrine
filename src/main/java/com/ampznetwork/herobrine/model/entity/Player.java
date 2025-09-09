@@ -11,10 +11,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "libmod_players")
 public class Player {
-    @Id UUID uuid;
-    String username;
+    @Id UUID id;
+    String name;
 
     public com.ampznetwork.libmod.api.entity.Player upgrade() {
-        return com.ampznetwork.libmod.api.entity.Player.builder().id(uuid).name(username).build();
+        return com.ampznetwork.libmod.api.entity.Player.builder().id(id).name(name).build();
     }
 }
