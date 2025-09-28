@@ -12,6 +12,8 @@ import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import org.comroid.api.data.seri.MimeType;
+import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.func.util.DelegateStream;
 import org.comroid.api.net.Token;
@@ -20,7 +22,7 @@ import org.comroid.commands.impl.CommandManager;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.boot.context.event.ApplicationStartingEvent;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -29,11 +31,11 @@ import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -45,19 +47,20 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.stream.Stream;
 
 @Log
 @Component
 @Controller
 @Command("haste")
 @RequestMapping("/haste")
-public class HasteService extends ListenerAdapter {
-    private static final String URL_PREFIX;
-    private static final File   BASE_DIR;
-    public static final  Emoji  EMOJI = Emoji.fromUnicode("\uD83D\uDD17"); // 🔗
+public class HasteService extends ListenerAdapter implements HasteInteractionSource {
+    public static final String URL_PREFIX;
+    public static final File   BASE_DIR;
+    public static final Emoji  EMOJI = Emoji.fromUnicode("\uD83D\uDD17"); // 🔗
 
     static {
         URL_PREFIX = (Debug.isDebug()
@@ -67,6 +70,14 @@ public class HasteService extends ListenerAdapter {
         if (!BASE_DIR.exists() && !BASE_DIR.mkdirs()) throw new AssertionError();
     }
 
+    public static String fname(String fpath) {
+        fpath = new File(fpath).getName();
+        var i = fpath.indexOf('?');
+        if (i != -1) fpath = fpath.substring(0, i);
+        return fpath;
+    }
+
+    @Autowired                                   ApplicationContext   context;
     @Lazy @Autowired(required = false) @Nullable MinecraftLogAnalyzer analyzer;
 
     @Command
@@ -115,15 +126,19 @@ public class HasteService extends ListenerAdapter {
     }
 
     @Command
-    @ResponseBody
     @GetMapping("/{id}")
-    public String get(@Command.Arg @PathVariable String id) throws IOException {
+    public ResponseEntity<String> get(@Command.Arg @PathVariable String id) throws IOException {
         var file = new File(BASE_DIR, id);
         log.info("Accessing haste content " + file.getAbsolutePath());
+        String data;
         try (var fis = new FileInputStream(file); var isr = new InputStreamReader(fis); var sw = new StringWriter()) {
             isr.transferTo(sw);
-            return sw.toString();
+            data = sw.toString();
         }
+        return new ResponseEntity<>(data,
+                MultiValueMap.fromSingleValue(Map.of("Content-Type",
+                        MimeType.forExtension(fext(id)).orElse(MimeType.PLAIN).toString())),
+                200);
     }
 
     @EventListener
@@ -135,34 +150,32 @@ public class HasteService extends ListenerAdapter {
         log.info("Initialized");
     }
 
-    private String fname(String fpath) {
-        fpath = new File(fpath).getName();
-        var i = fpath.indexOf('?');
-        if (i != -1) fpath = fpath.substring(0, i);
-        return fpath;
+    private void announceDone(Message message, String filepath, String id) {
+        var actions = context.getBeansOfType(HasteInteractionSource.class)
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(ThrowingFunction.rethrowing(src -> src.getClass()
+                        .getMethod("createHasteInteraction", String.class)), org.comroid.annotations.Order.COMPARATOR))
+                .flatMap(src -> src.createHasteInteraction(id))
+                .toList();
+        message.reply(new MessageCreateBuilder().setContent("File detected: " + fname(filepath))
+                .addComponents(ActionRow.of(actions))
+                .build()).queue();
     }
 
-    private String fext(String fname) {
+    @Override
+    @org.comroid.annotations.Order(Integer.MIN_VALUE)
+    public Stream<ActionRowChildComponent> createHasteInteraction(String id) {
+        return Stream.of(Button.link(URL_PREFIX + id, EMOJI.getFormatted() + " Open in Browser"));
+    }
+
+    private static String fext(String fname) {
         var i = fname.lastIndexOf('.');
         if (i != -1) fname = fname.substring(i);
         return fname;
     }
 
-    private void announceDone(Message message, String filepath, String id) {
-        var actions = new ArrayList<ActionRowChildComponent>();
-        actions.add(Button.link(URL_PREFIX + id, EMOJI.getFormatted() + " Open in Browser"));
-
-        var fname = fname(filepath);
-        if (analyzer != null && Set.of("latest.log", "debug.log").contains(fname)) actions.add(Button.secondary(
-                MinecraftLogAnalyzer.EVENT_KEY + id,
-                MinecraftLogAnalyzer.EMOJI.getFormatted() + " Analyze Logs"));
-
-        message.reply(new MessageCreateBuilder().setContent("File detected: " + fname)
-                .addComponents(ActionRow.of(actions))
-                .build()).queue();
-    }
-
-    private String newToken() {
+    private static String newToken() {
         return Token.generate(16, false, str -> !new File(BASE_DIR, str).exists()).toLowerCase();
     }
 }
