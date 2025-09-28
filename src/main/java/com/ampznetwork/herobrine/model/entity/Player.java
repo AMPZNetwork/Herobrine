@@ -5,9 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.Data;
 
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Id;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Id;
 import java.util.UUID;
 
 @Data

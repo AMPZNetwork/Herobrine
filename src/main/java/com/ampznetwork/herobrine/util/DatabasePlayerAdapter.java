@@ -19,6 +19,6 @@ public class DatabasePlayerAdapter implements PlayerIdentifierAdapter {
 
     @Override
     public Optional<com.ampznetwork.libmod.api.entity.Player> getPlayer(String name) {
-        return players.findPlayerByUsername(name).map(com.ampznetwork.herobrine.model.entity.Player::upgrade);
+        return players.findPlayerByName(name).map(com.ampznetwork.herobrine.model.entity.Player::upgrade);
     }
 }

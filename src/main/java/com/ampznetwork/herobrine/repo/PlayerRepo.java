@@ -9,5 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface PlayerRepo extends CrudRepository<Player, UUID> {
-    Optional<Player> findPlayerByUsername(String username);
+    Optional<Player> findPlayerByName(String name);
 }

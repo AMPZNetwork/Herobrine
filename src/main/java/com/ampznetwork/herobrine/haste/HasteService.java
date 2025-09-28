@@ -1,14 +1,30 @@
 package com.ampznetwork.herobrine.haste;
 
+import com.ampznetwork.herobrine.analyzer.MinecraftLogAnalyzer;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
+import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
+import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.func.util.DelegateStream;
 import org.comroid.api.net.Token;
 import org.comroid.commands.Command;
+import org.comroid.commands.impl.CommandManager;
+import org.jetbrains.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.boot.context.event.ApplicationStartingEvent;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -29,7 +45,9 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URI;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Set;
 
 @Log
 @Component
@@ -39,6 +57,7 @@ import java.util.Objects;
 public class HasteService extends ListenerAdapter {
     private static final String URL_PREFIX;
     private static final File   BASE_DIR;
+    public static final  Emoji  EMOJI = Emoji.fromUnicode("\uD83D\uDD17"); // 🔗
 
     static {
         URL_PREFIX = (Debug.isDebug()
@@ -47,6 +66,8 @@ public class HasteService extends ListenerAdapter {
         BASE_DIR   = Paths.get(System.getProperty("java.io.tmpdir"), "herobrine-haste").toFile();
         if (!BASE_DIR.exists() && !BASE_DIR.mkdirs()) throw new AssertionError();
     }
+
+    @Lazy @Autowired(required = false) @Nullable MinecraftLogAnalyzer analyzer;
 
     @Command
     public String post(@Command.Arg File file) throws IOException {
@@ -68,11 +89,13 @@ public class HasteService extends ListenerAdapter {
     @Override
     @SneakyThrows
     public void onMessageReceived(MessageReceivedEvent event) {
+        if (event.isWebhookMessage() || event.getAuthor().isBot() || event.getAuthor().isSystem()) return;
         var message = event.getMessage();
         for (var attachment : message.getAttachments()) {
             var url = new URI(attachment.getUrl()).toURL();
             try (var uis = url.openStream()) {
-                var id = post(uis, attachment.getFileName());
+                var fileName = attachment.getFileName();
+                var id       = post(uis, fileName);
                 announceDone(message, url.getFile(), id);
             }
         }
@@ -103,6 +126,15 @@ public class HasteService extends ListenerAdapter {
         }
     }
 
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) {
+        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
+        event.getApplicationContext().getBean(CommandManager.class).register(this);
+
+        log.info("Initialized");
+    }
+
     private String fname(String fpath) {
         fpath = new File(fpath).getName();
         var i = fpath.indexOf('?');
@@ -117,7 +149,17 @@ public class HasteService extends ListenerAdapter {
     }
 
     private void announceDone(Message message, String filepath, String id) {
-        message.reply("File detected: [%s](%s)".formatted(fname(filepath), URL_PREFIX + id)).queue();
+        var actions = new ArrayList<ActionRowChildComponent>();
+        actions.add(Button.link(URL_PREFIX + id, EMOJI.getFormatted() + " Open in Browser"));
+
+        var fname = fname(filepath);
+        if (analyzer != null && Set.of("latest.log", "debug.log").contains(fname)) actions.add(Button.secondary(
+                MinecraftLogAnalyzer.EVENT_KEY + id,
+                MinecraftLogAnalyzer.EMOJI.getFormatted() + " Analyze Logs"));
+
+        message.reply(new MessageCreateBuilder().setContent("File detected: " + fname)
+                .addComponents(ActionRow.of(actions))
+                .build()).queue();
     }
 
     private String newToken() {

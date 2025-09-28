@@ -1,13 +1,12 @@
 <component name="ProjectRunConfigurationManager">
-    <configuration default="false" name="Program" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
-        <envs>
-            <env name="DEBUG" value="true"/>
-        </envs>
-        <module name="Herobrine.main"/>
-        <option name="SPRING_BOOT_MAIN_CLASS" value="com.ampznetwork.herobrine.Program"/>
-        <method v="2">
-            <option name="Make" enabled="true"/>
-            <option name="RunConfigurationTask" enabled="true" run_configuration_name="Background Services" run_configuration_type="docker-deploy"/>
-        </method>
-    </configuration>
+  <configuration default="false" name="Program" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+    <envs>
+      <env name="DEBUG" value="true" />
+    </envs>
+    <module name="Herobrine.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.ampznetwork.herobrine.Program" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
 </component>
