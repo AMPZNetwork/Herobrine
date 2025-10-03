@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 
 @Value
 public class AnalysisResults {
-    String id;
+    String         id;
     List<LogEntry> entries;
 
     public Map<String, List<LogEntry>> getEntriesByLevel() {
@@ -22,7 +22,7 @@ public class AnalysisResults {
         var entriesByLevel = getEntriesByLevel();
         return new EmbedBuilder().setTitle("Minecraft Log Analyzer Results")
                 .setUrl(HasteService.URL_PREFIX + id)
-                .addField("%d Log entries".formatted(entriesByLevel.size()),
+                .addField("%d Log entries".formatted(entries.size()),
                         entriesByLevel.entrySet()
                                 .stream()
                                 .map(e -> e.getValue().size() + " " + e.getKey())

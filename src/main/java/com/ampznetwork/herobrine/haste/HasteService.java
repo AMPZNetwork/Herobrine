@@ -8,8 +8,10 @@ import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.api.data.seri.MimeType;
@@ -98,10 +100,23 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
     }
 
     @Override
-    @SneakyThrows
     public void onMessageReceived(MessageReceivedEvent event) {
         if (event.isWebhookMessage() || event.getAuthor().isBot() || event.getAuthor().isSystem()) return;
         var message = event.getMessage();
+        if (message.getAttachments().isEmpty()) return;
+        message.addReaction(EMOJI).queue();
+    }
+
+    @Override
+    @SneakyThrows
+    public void onMessageReactionAdd(MessageReactionAddEvent event) {
+        if (!event.getReaction().getEmoji().equals(EMOJI)) return;
+
+        var message  = event.retrieveMessage().complete();
+        var reaction = message.getReaction(EMOJI);
+
+        if (reaction == null || event.getUser() instanceof SelfUser) return;
+
         for (var attachment : message.getAttachments()) {
             var url = new URI(attachment.getUrl()).toURL();
             try (var uis = url.openStream()) {
@@ -158,7 +173,7 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
                         .getMethod("createHasteInteraction", String.class)), org.comroid.annotations.Order.COMPARATOR))
                 .flatMap(src -> src.createHasteInteraction(id))
                 .toList();
-        message.reply(new MessageCreateBuilder().setContent("File detected: " + fname(filepath))
+        message.reply(new MessageCreateBuilder().setContent("File uploaded: `%s`".formatted(fname(filepath)))
                 .addComponents(ActionRow.of(actions))
                 .build()).queue();
     }

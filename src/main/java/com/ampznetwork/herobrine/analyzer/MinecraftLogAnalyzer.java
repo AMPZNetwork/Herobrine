@@ -3,6 +3,7 @@ package com.ampznetwork.herobrine.analyzer;
 import com.ampznetwork.herobrine.haste.HasteInteractionSource;
 import com.ampznetwork.herobrine.haste.HasteService;
 import com.ampznetwork.herobrine.model.logs.ExceptionEntry;
+import com.ampznetwork.herobrine.model.logs.LogComponent;
 import com.ampznetwork.herobrine.model.logs.LogEntry;
 import com.ampznetwork.herobrine.model.logs.StackTraceElementEntry;
 import lombok.SneakyThrows;
@@ -13,10 +14,10 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.comroid.api.func.ext.Builder;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
@@ -30,13 +31,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.ListIterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
+import java.util.Stack;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
 import java.util.stream.Stream;
 
 @Log
@@ -68,82 +73,62 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
     @ResponseBody
     @GetMapping("/results")
     public AnalysisResults results(@PathVariable("id") String id) {
-        var lines = Objects.requireNonNull(hasteService.get(id).getBody(), "paste body")
+        var entries = Objects.requireNonNull(hasteService.get(id).getBody(), "paste body")
                 .lines()
-                .toList()
-                .listIterator();
-        var entries = new ArrayList<LogEntry>();
-
-        while (lines.hasNext()) {
-            var line = lines.next();
-            var m0   = LogEntry.PATTERN.matcher(line);
-
-            if (!m0.matches()) continue;
-            var log = LogEntry.builder();
-
-            log.datetime(LogEntry.DATETIME.parse(m0.group("datetime")));
-            log.threadName(m0.group("thread"));
-            log.logLevel(m0.group("level"));
-            log.loggerName(m0.group("logger"));
-            log.componentName(m0.group("component"));
-            log.message(m0.group("message"));
-
-            var exception = readException(lines);
-            if (exception != null) log.exception(exception.build());
-
-            entries.add(log.build());
-        }
-        entries.sort(Comparator.comparing(e -> LocalDateTime.from(e.getDatetime())));
-
-        return new AnalysisResults(id, Collections.unmodifiableList(entries));
-    }
-
-    private @Nullable ExceptionEntry.Builder readException(ListIterator<String> lines) {
-        if (lines.hasNext()) {
-            var line = lines.next();
-            var m1   = ExceptionEntry.PATTERN.matcher(line);
-            if (!m1.matches()) return null;
-            var exception = ExceptionEntry.builder();
-
-            exception.className(m1.group("exception"));
-            exception.message(m1.group("message"));
-
-            while (lines.hasNext()) {
-                line = peek(lines);
-                if (LogEntry.PATTERN.matcher(line).matches() || line.matches("\\s*\\.{3} \\d+ more")) break;
-                if (line.trim().startsWith("Caused by")) {
-                    var cause = readException(lines);
-                    if (cause != null) {
-                        lines.next();
-                        exception.causedBy(cause.build());
-                        continue;
+                .flatMap(line -> Arrays.stream(LogLineAdapter.values())
+                        .filter(lla -> lla.test(line))
+                        .map(lla -> lla.apply(line)))
+                .collect(new Collector<Builder<? extends LogComponent>, Stack<LogEntry.Builder>, List<LogEntry>>() {
+                    @Override
+                    public Supplier<Stack<LogEntry.Builder>> supplier() {
+                        return Stack::new;
                     }
-                }
 
-                Matcher m2;
-                while (lines.hasNext() && (m2 = StackTraceElementEntry.PATTERN.matcher(line = peek(lines))).matches()) {
-                    lines.next();
+                    @Override
+                    public BiConsumer<Stack<LogEntry.Builder>, Builder<? extends LogComponent>> accumulator() {
+                        return (ls, c) -> {
+                            switch (c) {
+                                case LogEntry.Builder msg:
+                                    ls.add(msg);
+                                    break;
+                                case ExceptionEntry.Builder ex:
+                                    if (ls.isEmpty()) break;
+                                    ls.peek().setException(ex);
+                                    break;
+                                case StackTraceElementEntry.Builder ste:
+                                    if (ls.isEmpty()) break;
+                                    var ex = ls.peek().getException();
+                                    if (ex != null) ex.addStackTrace(ste);
+                                    break;
+                                default:
+                                    throw new IllegalStateException("Unexpected value: " + c);
+                            }
+                        };
+                    }
 
-                    var element = StackTraceElementEntry.builder();
+                    @Override
+                    public BinaryOperator<Stack<LogEntry.Builder>> combiner() {
+                        return (l, r) -> {
+                            l.addAll(r);
+                            return l;
+                        };
+                    }
 
-                    element.className(m2.group("class"));
-                    element.method(m2.group("method"));
-                    element.sourceFile(m2.group("file"));
-                    var lineNo = m2.group("line");
-                    element.line(lineNo != null && lineNo.matches("\\d+") ? Integer.parseInt(lineNo) : null);
+                    @Override
+                    public Function<Stack<LogEntry.Builder>, List<LogEntry>> finisher() {
+                        return ls -> ls.stream()
+                                .map(LogEntry.Builder::build)
+                                .sorted(Comparator.comparing(e -> LocalDateTime.from(e.getDatetime())))
+                                .toList();
+                    }
 
-                    exception.stackTrace(element.build());
-                }
-            }
+                    @Override
+                    public Set<Characteristics> characteristics() {
+                        return Set.of();
+                    }
+                });
 
-            return exception;
-        } else return null;
-    }
-
-    private String peek(ListIterator<String> lines) {
-        var line = lines.next();
-        lines.previous();
-        return line;
+        return new AnalysisResults(id, entries);
     }
 
     @EventListener
@@ -158,7 +143,6 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
     @Override
     public Stream<ActionRowChildComponent> createHasteInteraction(String id) {
         return Stream.<ActionRowChildComponent>of(Button.secondary(MinecraftLogAnalyzer.EVENT_KEY + id,
-                        MinecraftLogAnalyzer.EMOJI.getFormatted() + " Analyze Logs"))
-                .filter(button -> id.contains("log"));
+                MinecraftLogAnalyzer.EMOJI.getFormatted() + " Analyze Logs")).filter(button -> id.contains("log"));
     }
 }
