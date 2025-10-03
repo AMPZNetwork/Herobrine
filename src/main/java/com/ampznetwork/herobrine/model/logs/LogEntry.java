@@ -13,7 +13,7 @@ import java.time.temporal.TemporalAccessor;
 import java.util.regex.Pattern;
 
 @Value
-public class LogEntry implements LogComponent {
+public class LogEntry implements ToplevelLogComponent {
     public static final DateTimeFormatter DATETIME = DateTimeFormatter.ofPattern("ddMMMyyy HH:mm:ss.SSS");
     public static final Pattern           PATTERN  = Pattern.compile(
             "\\[(?<datetime>[\\w.:/ ]+)] \\[(?<thread>[\\w._-]+)/(?<level>\\w+)] \\[(?<logger>[\\w._-]+)/(?<component>[\\w._-]+)?]: (?<message>.+)");

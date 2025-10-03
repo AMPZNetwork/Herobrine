@@ -5,7 +5,9 @@ import com.ampznetwork.herobrine.haste.HasteService;
 import com.ampznetwork.herobrine.model.logs.ExceptionEntry;
 import com.ampznetwork.herobrine.model.logs.LogComponent;
 import com.ampznetwork.herobrine.model.logs.LogEntry;
+import com.ampznetwork.herobrine.model.logs.PlaintextLogEntry;
 import com.ampznetwork.herobrine.model.logs.StackTraceElementEntry;
+import com.ampznetwork.herobrine.model.logs.ToplevelLogComponent;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
@@ -14,7 +16,9 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Builder;
+import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.jetbrains.annotations.NotNull;
@@ -30,9 +34,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -78,14 +80,14 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
                 .flatMap(line -> Arrays.stream(LogLineAdapter.values())
                         .filter(lla -> lla.test(line))
                         .map(lla -> lla.apply(line)))
-                .collect(new Collector<Builder<? extends LogComponent>, Stack<LogEntry.Builder>, List<LogEntry>>() {
+                .collect(new Collector<Builder<? extends LogComponent>, Stack<Builder<? extends ToplevelLogComponent>>, List<ToplevelLogComponent>>() {
                     @Override
-                    public Supplier<Stack<LogEntry.Builder>> supplier() {
+                    public Supplier<Stack<Builder<? extends ToplevelLogComponent>>> supplier() {
                         return Stack::new;
                     }
 
                     @Override
-                    public BiConsumer<Stack<LogEntry.Builder>, Builder<? extends LogComponent>> accumulator() {
+                    public BiConsumer<Stack<Builder<? extends ToplevelLogComponent>>, Builder<? extends LogComponent>> accumulator() {
                         return (ls, c) -> {
                             switch (c) {
                                 case LogEntry.Builder msg:
@@ -93,12 +95,23 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
                                     break;
                                 case ExceptionEntry.Builder ex:
                                     if (ls.isEmpty()) break;
-                                    ls.peek().setException(ex);
+                                    ls.reversed()
+                                            .stream()
+                                            .flatMap(Streams.cast(LogEntry.Builder.class))
+                                            .findFirst()
+                                            .ifPresent(head -> head.setException(ex));
                                     break;
                                 case StackTraceElementEntry.Builder ste:
                                     if (ls.isEmpty()) break;
-                                    var ex = ls.peek().getException();
-                                    if (ex != null) ex.addStackTrace(ste);
+                                    ls.reversed()
+                                            .stream()
+                                            .flatMap(Streams.cast(LogEntry.Builder.class))
+                                            .findFirst()
+                                            .map(LogEntry.Builder::getException)
+                                            .ifPresent(ex -> ex.addStackTrace(ste));
+                                    break;
+                                case PlaintextLogEntry.Builder plain:
+                                    ls.add(plain);
                                     break;
                                 default:
                                     throw new IllegalStateException("Unexpected value: " + c);
@@ -107,7 +120,7 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
                     }
 
                     @Override
-                    public BinaryOperator<Stack<LogEntry.Builder>> combiner() {
+                    public BinaryOperator<Stack<Builder<? extends ToplevelLogComponent>>> combiner() {
                         return (l, r) -> {
                             l.addAll(r);
                             return l;
@@ -115,11 +128,10 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
                     }
 
                     @Override
-                    public Function<Stack<LogEntry.Builder>, List<LogEntry>> finisher() {
-                        return ls -> ls.stream()
-                                .map(LogEntry.Builder::build)
-                                .sorted(Comparator.comparing(e -> LocalDateTime.from(e.getDatetime())))
-                                .toList();
+                    public Function<Stack<Builder<? extends ToplevelLogComponent>>, List<ToplevelLogComponent>> finisher() {
+                        return ls -> ls.stream().map(Builder::build)
+                                //.sorted(Comparator.comparing(e -> LocalDateTime.from(e.getDatetime())))
+                                .map(Polyfill::<ToplevelLogComponent>uncheckedCast).toList();
                     }
 
                     @Override
@@ -127,6 +139,12 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
                         return Set.of();
                     }
                 });
+
+        var unparsed = entries.stream()
+                .flatMap(Streams.cast(PlaintextLogEntry.Builder.class))
+                .map(PlaintextLogEntry.Builder::getText)
+                .toList();
+        if (!unparsed.isEmpty()) log.fine("Unparseable log entries:\n\t" + String.join("\n\t", unparsed));
 
         return new AnalysisResults(id, entries);
     }

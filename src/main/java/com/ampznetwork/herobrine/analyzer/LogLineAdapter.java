@@ -3,6 +3,7 @@ package com.ampznetwork.herobrine.analyzer;
 import com.ampznetwork.herobrine.model.logs.ExceptionEntry;
 import com.ampznetwork.herobrine.model.logs.LogComponent;
 import com.ampznetwork.herobrine.model.logs.LogEntry;
+import com.ampznetwork.herobrine.model.logs.PlaintextLogEntry;
 import com.ampznetwork.herobrine.model.logs.StackTraceElementEntry;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -50,6 +51,11 @@ public enum LogLineAdapter implements Predicate<String>, Function<String, Builde
                     matcher.group("method"),
                     matcher.group("file"),
                     lineTxt == null || lineTxt.isBlank() ? null : Integer.parseInt(lineTxt));
+        }
+    }, PLAINTEXT(Pattern.compile(".+")) {
+        @Override
+        public PlaintextLogEntry.Builder apply(String line) {
+            return new PlaintextLogEntry.Builder(line);
         }
     };
 

@@ -7,3 +7,9 @@ spring:
   session:
     jdbc:
       initialize-schema: always
+logging:
+  level:
+    root: info
+    de.kaleidox: debug
+    org.comroid: debug
+    com.ampznetwork: debug
