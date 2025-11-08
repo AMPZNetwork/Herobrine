@@ -104,6 +104,10 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
         if (event.isWebhookMessage() || event.getAuthor().isBot() || event.getAuthor().isSystem()) return;
         var message = event.getMessage();
         if (message.getAttachments().isEmpty()) return;
+        if (message.getAttachments()
+                .stream()
+                .map(Message.Attachment::getFileName)
+                .noneMatch(fileName -> Stream.of("latest", "crash", "log", "txt").anyMatch(fileName::contains))) return;
         message.addReaction(EMOJI).queue();
     }
 
