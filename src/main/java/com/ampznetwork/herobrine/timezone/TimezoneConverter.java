@@ -85,7 +85,7 @@ public class TimezoneConverter extends ListenerAdapter {
         var message = event.getMessage();
         var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
 
-        if (!matcher.matches()) return;
+        if (!matcher.find()) return;
 
         message.addReaction(EMOJI).queue();
     }
