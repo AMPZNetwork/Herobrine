@@ -139,6 +139,7 @@ public class TimezoneConverter extends ListenerAdapter {
             var mid  = matcher.group("mid");
             var hour = Integer.parseInt(matcher.group("hour"));
             if ("pm".equalsIgnoreCase(mid)) hour += 12;
+            if (hour == 24) hour = 0;
 
             var minuteStr     = matcher.group("minute");
             var minute        = minuteStr == null || minuteStr.isBlank() ? 0 : Integer.parseInt(minuteStr);
