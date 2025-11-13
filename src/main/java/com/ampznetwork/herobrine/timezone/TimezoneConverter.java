@@ -186,7 +186,7 @@ public class TimezoneConverter extends ListenerAdapter {
     private LocalTime matchTime(Matcher matcher) {
         var mid  = matcher.group("mid");
         var hour = Integer.parseInt(matcher.group("hour"));
-        switch (mid) {
+        if (mid != null) switch (mid) {
             case "am":
                 if (hour == 12) hour = 0;
                 break;
