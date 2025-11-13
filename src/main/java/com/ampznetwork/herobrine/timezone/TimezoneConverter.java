@@ -94,9 +94,13 @@ public class TimezoneConverter extends ListenerAdapter {
         var message = event.getMessage();
         var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
 
-        if (!matcher.find()) return;
+        boolean any = false;
+        while (matcher.find()) {
+            if (matcher.group(0).matches("\\d+")) continue;
+            any = true;
+        }
 
-        message.addReaction(EMOJI).queue();
+        if (any) message.addReaction(EMOJI).queue();
     }
 
     @Override
