@@ -146,7 +146,7 @@ public class TimezoneConverter extends ListenerAdapter {
             var zonedTime     = ZonedDateTime.of(LocalDate.now(), time, authorZone);
             var convertedTime = zonedTime.withZoneSameInstant(targetZone);
 
-            embed.addField("%s mentioned the time `%s`".formatted(author, matcher.group(0)),
+            embed.addField("%s mentioned the time `%s`".formatted(author.getEffectiveName(), matcher.group(0)),
                     "That would be `%s` in your time zone".formatted(FORMATTER.format(convertedTime)),
                     false);
         }
