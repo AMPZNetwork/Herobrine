@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine.timezone;
 
+import com.ampznetwork.herobrine.haste.HasteService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
@@ -12,6 +13,8 @@ import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.RestAction;
+import org.comroid.api.func.util.DelegateStream;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandPrivacyLevel;
@@ -23,14 +26,20 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
@@ -98,67 +107,101 @@ public class TimezoneConverter extends ListenerAdapter {
         var reaction = message.getReaction(EMOJI);
         var user     = event.getUser();
         var author   = message.getAuthor();
+        var channel = event.getChannel();
 
         if (reaction == null || user == null || user instanceof SelfUser) return;
 
-        var config  = bean(TimezoneConfiguration.class);
-        var opt     = config.getZoneId(author);
-        var channel = event.getChannel();
-        if (opt.isEmpty()) {
-            reaction.removeReaction(user)
-                    .flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
-                                    "Sorry, but %s did not set their timezone!".formatted(author))
-                            .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
-                            .build()))
-                    .delay(30, TimeUnit.SECONDS)
-                    .flatMap(Message::delete)
-                    .queue();
-            return;
+        RestAction<?> action = reaction.removeReaction(user);
+        try {
+            var config = bean(TimezoneConfiguration.class);
+            var opt    = config.getZoneId(author);
+            if (opt.isEmpty()) {
+                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
+                                "Sorry, but %s did not set their timezone!".formatted(author))
+                        .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
+                        .build()).delay(30, TimeUnit.SECONDS).flatMap(Message::delete));
+                return;
+            }
+            var authorZone = opt.get();
+            opt = config.getZoneId(user);
+            if (opt.isEmpty()) {
+                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
+                                "Sorry, but you" + " did not " + "set your " + "timezone!")
+                        .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
+                        .build()).delay(30, TimeUnit.SECONDS).flatMap(Message::delete));
+                return;
+            }
+            var targetZone = opt.get();
+
+            var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
+            var embed = new EmbedBuilder().setTitle("Timezone conversion")
+                    .setFooter(user.getEffectiveName() + " - This message self destructs in 5 minutes",
+                            user.getAvatarUrl());
+
+            while (matcher.find()) {
+                var time          = matchTime(matcher);
+                var zonedTime     = ZonedDateTime.of(LocalDate.now(), time, authorZone);
+                var convertedTime = zonedTime.withZoneSameInstant(targetZone);
+
+                embed.addField("%s mentioned the time `%s` (`%s`)".formatted(author.getEffectiveName(),
+                                matcher.group(0),
+                                FORMATTER.format(zonedTime)),
+                        "That would be `%s` in your time zone".formatted(FORMATTER.format(convertedTime)),
+                        false);
+            }
+
+            action = action.flatMap($ -> channel.sendMessageEmbeds(embed.build())
+                    .delay(5, TimeUnit.MINUTES)
+                    .flatMap(Message::delete));
+        } catch (Throwable t) {
+            var haste = bean(HasteService.class);
+
+            String str;
+            try (
+                    var sw = new StringWriter(); var adpOut = new DelegateStream.Output(sw);
+                    var ps = new PrintStream(adpOut)
+            ) {
+                t.printStackTrace(ps);
+                str = sw.toString();
+
+                String hasteId;
+                try (var sr = new StringReader(str); var adpIn = new DelegateStream.Input(sr)) {
+                    hasteId = haste.post(adpIn, "exception.txt");
+                    action  = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setColor(Color.RED)
+                            .setTitle("An internal error ocurred")
+                            .setUrl(HasteService.URL_PREFIX + hasteId)
+                            .build()));
+                } catch (IOException e) {
+                    log.log(Level.SEVERE, "Could not upload exception info to Haste service", e);
+                }
+            } catch (IOException e) {
+                log.log(Level.SEVERE, "Could not handle exception", e);
+                log.log(Level.SEVERE, "-> Underlying exception:", t);
+            }
+        } finally {
+            action.queue();
         }
-        var authorZone = opt.get();
-        opt = config.getZoneId(user);
-        if (opt.isEmpty()) {
-            reaction.removeReaction(user)
-                    .flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
-                                    "Sorry, but you did not set your timezone!")
-                            .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
-                            .build()))
-                    .delay(30, TimeUnit.SECONDS)
-                    .flatMap(Message::delete)
-                    .queue();
-            return;
-        }
-        var targetZone = opt.get();
+    }
 
-        var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
-        var embed = new EmbedBuilder().setTitle("Timezone conversion")
-                .setFooter(user.getEffectiveName() + " - This message self destructs in 5 minutes",
-                        user.getAvatarUrl());
-
-        while (matcher.find()) {
-            var mid  = matcher.group("mid");
-            var hour = Integer.parseInt(matcher.group("hour"));
-            if ("pm".equalsIgnoreCase(mid)) hour += 12;
-            if (hour == 24) hour = 0;
-
-            var minuteStr     = matcher.group("minute");
-            var minute        = minuteStr == null || minuteStr.isBlank() ? 0 : Integer.parseInt(minuteStr);
-            var time          = LocalTime.of(hour, minute);
-            var zonedTime     = ZonedDateTime.of(LocalDate.now(), time, authorZone);
-            var convertedTime = zonedTime.withZoneSameInstant(targetZone);
-
-            embed.addField("%s mentioned the time `%s` (`%s`)".formatted(author.getEffectiveName(),
-                            matcher.group(0),
-                            FORMATTER.format(zonedTime)),
-                    "That would be `%s` in your time zone".formatted(FORMATTER.format(convertedTime)),
-                    false);
+    private LocalTime matchTime(Matcher matcher) {
+        var mid  = matcher.group("mid");
+        var hour = Integer.parseInt(matcher.group("hour"));
+        switch (mid) {
+            case "am":
+                if (hour == 12) hour = 0;
+                break;
+            case "pm":
+                if (hour != 12) hour += 12;
+                break;
         }
 
-        reaction.removeReaction(user)
-                .flatMap($ -> channel.sendMessageEmbeds(embed.build()))
-                .delay(5, TimeUnit.MINUTES)
-                .flatMap(Message::delete)
-                .queue();
+        var minuteStr = matcher.group("minute");
+        var minute    = minuteStr == null || minuteStr.isBlank() ? 0 : Integer.parseInt(minuteStr);
+
+        if (hour >= 24) hour %= 24;
+        if (minute >= 60) minute %= 60;
+
+        return LocalTime.of(hour, minute);
     }
 
     @EventListener
