@@ -139,8 +139,9 @@ public class TimezoneConverter extends ListenerAdapter {
 
             var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
             var embed = new EmbedBuilder().setTitle("Timezone conversion")
-                    .setFooter(user.getEffectiveName() + " - This message self destructs in 5 minutes",
+                    .setFooter(user.getEffectiveName() + " - This message self destructs in 1 minute",
                             user.getAvatarUrl());
+            var any = false;
 
             while (matcher.find()) {
                 var time          = matchTime(matcher);
@@ -152,10 +153,13 @@ public class TimezoneConverter extends ListenerAdapter {
                                 FORMATTER.format(zonedTime)),
                         "That would be `%s` in your time zone".formatted(FORMATTER.format(convertedTime)),
                         false);
+                any = true;
             }
+            if (!any)
+                embed.addField("No timestampt was found", "Sorry, I could not find any timestamp to convert", false);
 
             action = action.flatMap($ -> channel.sendMessageEmbeds(embed.build())
-                    .delay(5, TimeUnit.MINUTES)
+                    .delay(1, TimeUnit.MINUTES)
                     .flatMap(Message::delete));
         } catch (Throwable t) {
             var haste = bean(HasteService.class);
