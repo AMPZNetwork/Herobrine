@@ -105,7 +105,7 @@ public class TimezoneConverter extends ListenerAdapter {
         var opt     = config.getZoneId(author);
         var channel = event.getChannel();
         if (opt.isEmpty()) {
-            reaction.removeReaction()
+            reaction.removeReaction(user)
                     .flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
                                     "Sorry, but %s did not set their timezone!".formatted(author))
                             .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
@@ -118,7 +118,7 @@ public class TimezoneConverter extends ListenerAdapter {
         var authorZone = opt.get();
         opt = config.getZoneId(user);
         if (opt.isEmpty()) {
-            reaction.removeReaction()
+            reaction.removeReaction(user)
                     .flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
                                     "Sorry, but you did not set your timezone!")
                             .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
@@ -151,7 +151,7 @@ public class TimezoneConverter extends ListenerAdapter {
                     false);
         }
 
-        reaction.removeReaction()
+        reaction.removeReaction(user)
                 .flatMap($ -> channel.sendMessageEmbeds(embed.build()))
                 .delay(5, TimeUnit.MINUTES)
                 .flatMap(Message::delete)
