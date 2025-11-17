@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 @Log
 @Component
 public class SuggestionService extends ListenerAdapter {
-    public static final long CHANNEL_ID = Debug.isDebug() ? 1141990824167624734L : 1368256901162336398L;
+    public static final long CHANNEL_ID = Debug.isDebug() ? 1141990824167624734L : 1440076272263893113L;
 
     @Command("suggest")
     public void suggest(
