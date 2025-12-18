@@ -16,6 +16,7 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.comroid.annotations.Description;
 import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Builder;
 import org.comroid.api.func.util.Streams;
@@ -67,7 +68,8 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
     }
 
     @Command
-    public AnalysisResults analyze(@Command.Arg String id) {
+    @Description("Analyze an uploaded log file")
+    public AnalysisResults analyze(@Command.Arg @Description("The haste ID of the log file") String id) {
         return results(id);
     }
 

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import org.comroid.annotations.Default;
+import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.adp.JSON;
 import org.comroid.api.io.FileFlag;
 import org.comroid.api.java.ResourceLoader;
@@ -48,8 +49,10 @@ public class Program {
     }
 
     @Command(permission = "8")
+    @Description("Shutdown the Bot")
     public static String shutdown(
-            @Command.Arg(value = "purgecommands", required = false) @Nullable Boolean purgeCommands
+            @Command.Arg(value = "purgecommands",
+                         required = false) @Description("Whether to purge commands on restart") @Nullable Boolean purgeCommands
     ) {
         if (Boolean.TRUE.equals(purgeCommands)) FileFlag.enable(COMMAND_PURGE_FILE);
         System.exit(0);
@@ -57,9 +60,11 @@ public class Program {
     }
 
     @Command
+    @Description("Send a HTTP request")
     public static CompletableFuture<String> request(
-            @Command.Arg String uri, @Command.Arg(required = false) @Default("GET") REST.Method method,
-            @Command.Arg(required = false) @Default("") String body
+            @Command.Arg @Description("URI to send a request to") String uri,
+            @Command.Arg(required = false) @Default("GET") @Description("HTTP method to use; defaults to GET") REST.Method method,
+            @Command.Arg(required = false) @Default("") @Description("Request body to use; default is empty") String body
     ) {
         return REST.request(method, uri, body == null ? null : JSON.Parser.parse(body))
                 .execute()
@@ -140,7 +145,8 @@ public class Program {
         return adp;
     }
 
-    @Order@EventListener
+    @Order
+    @EventListener
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(CommandManager.class).initialize();
 

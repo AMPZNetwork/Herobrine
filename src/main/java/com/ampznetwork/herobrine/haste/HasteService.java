@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.MimeType;
 import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
@@ -59,6 +60,7 @@ import java.util.stream.Stream;
 @Controller
 @Command("haste")
 @RequestMapping("/haste")
+@Description("Haste file uploader")
 public class HasteService extends ListenerAdapter implements HasteInteractionSource {
     public static final String URL_PREFIX;
     public static final File   BASE_DIR;
@@ -83,7 +85,8 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
     @Lazy @Autowired(required = false) @Nullable MinecraftLogAnalyzer analyzer;
 
     @Command
-    public String post(@Command.Arg File file) throws IOException {
+    @Description("Upload a file")
+    public String post(@Command.Arg @Description("The file to upload") File file) throws IOException {
         try (var fis = new FileInputStream(file)) {
             return URL_PREFIX + post(fis, file.getName());
         }
@@ -146,7 +149,9 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
 
     @Command
     @GetMapping("/{id}")
-    public ResponseEntity<String> get(@Command.Arg @PathVariable String id) throws IOException {
+    @Description("Get the contents of a file")
+    public ResponseEntity<String> get(@Command.Arg @Description("The haste ID of the file") @PathVariable String id)
+    throws IOException {
         var file = new File(BASE_DIR, id);
         log.info("Accessing haste content " + file.getAbsolutePath());
         String data;

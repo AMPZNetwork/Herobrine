@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.RestAction;
+import org.comroid.annotations.Description;
 import org.comroid.api.func.util.DelegateStream;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
@@ -47,6 +48,7 @@ import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 @Log
 @Component
 @Command("time")
+@Description("Set your timezone preferences")
 public class TimezoneConverter extends ListenerAdapter {
     public static final DateTimeFormatter FORMATTER    = DateTimeFormatter.ofPattern("HH:mm");
     public static final Emoji             EMOJI        = Emoji.fromUnicode("⏰"); // ⏰
@@ -74,9 +76,11 @@ public class TimezoneConverter extends ListenerAdapter {
     }
 
     @Command(value = "zone", privacy = CommandPrivacyLevel.EPHEMERAL)
+    @Description("Set your timezone")
     public String zone(
             User user,
-            @Command.Arg(value = "timezone", autoFillProvider = TimeZoneAutoFillProvider.class) String timezone
+            @Command.Arg(value = "timezone", autoFillProvider = TimeZoneAutoFillProvider.class) @Description(
+                    "The timezone to set") String timezone
     ) {
         var config = bean(TimezoneConfiguration.class);
         var zone   = ZoneId.of(timezone);

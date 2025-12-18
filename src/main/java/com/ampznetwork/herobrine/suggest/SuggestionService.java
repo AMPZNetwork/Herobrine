@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.text.StringMode;
 import org.comroid.commands.Command;
@@ -21,9 +22,11 @@ public class SuggestionService extends ListenerAdapter {
     public static final long CHANNEL_ID = Debug.isDebug() ? 1141990824167624734L : 1440076272263893113L;
 
     @Command("suggest")
+    @Description("Post a suggestion")
     public void suggest(
             User user,
-            @Command.Arg(value = "suggestion", stringMode = StringMode.GREEDY) String suggestion
+            @Command.Arg(value = "suggestion",
+                         stringMode = StringMode.GREEDY) @Description("The suggestion") String suggestion
     ) {
         var jda     = user.getJDA();
         var channel = jda.getForumChannelById(CHANNEL_ID);
