@@ -17,6 +17,8 @@ project(':japi').projectDir = file('ModSuite/japi')
 
 include(':LibMod:api')
 project(':LibMod:api').projectDir = file('ModSuite/LibMod/api')
+include(':LibMod:core')
+project(':LibMod:core').projectDir = file('ModSuite/LibMod/core')
 
 include(':ChatMod:api')
 project(':ChatMod:api').projectDir = file('ModSuite/ChatMod/api')

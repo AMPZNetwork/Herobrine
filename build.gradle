@@ -11,6 +11,14 @@ group = 'com.ampznetwork'
 description = 'Herobrine'
 version = '0'
 
+[project(':LibMod:api'),
+ project(':LibMod:core'),
+ project(':ChatMod:api'),
+ project(':ChatMod:core'),
+ project(':ChatMod:discord')].each {
+    apply from: 'ModSuite/gradle/scripts/setup/global.gradle'
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
