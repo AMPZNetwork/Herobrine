@@ -1,4 +1,28 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        maven {
+            name = 'comroid'
+            url = 'https://maven.comroid.org'
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'Herobrine'
 
 include(':japi')
-include(':Herobrine')
+project(':japi').projectDir = file('ModSuite/japi')
+
+include(':LibMod:api')
+project(':LibMod:api').projectDir = file('ModSuite/LibMod/api')
+
+include(':ChatMod:api')
+project(':ChatMod:api').projectDir = file('ModSuite/ChatMod/api')
+include(':ChatMod:core')
+project(':ChatMod:core').projectDir = file('ModSuite/ChatMod/core')
+include(':ChatMod:discord')
+project(':ChatMod:discord').projectDir = file('ModSuite/ChatMod/discord')
+include(':ChatMod:AurionChat:api')
+project(':ChatMod:AurionChat:api').projectDir = file('ModSuite/ChatMod/thirdparty/AurionChat/api')
