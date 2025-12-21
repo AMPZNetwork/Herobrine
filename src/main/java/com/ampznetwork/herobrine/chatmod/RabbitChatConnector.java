@@ -17,6 +17,7 @@ import lombok.Value;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -35,6 +36,7 @@ import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
 import org.comroid.commands.model.CommandPrivacyLevel;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +45,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -61,7 +64,8 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 @Value
 @Component
 public class RabbitChatConnector {
-    @Autowired Config config;
+    public static final String ENDPOINT_NAME = "discord";
+    @Autowired          Config config;
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -103,7 +107,7 @@ public class RabbitChatConnector {
     @Command(privacy = CommandPrivacyLevel.EPHEMERAL)
     @Description("Shout into a channel")
     public void shout(
-            Guild guild, User user, Message message,
+            Guild guild, User user,
             @Command.Arg(autoFillProvider = HerobrineChannelNames.class) @Description("Channel to shout into") String channel,
             @Command.Arg(stringMode = StringMode.GREEDY) @Description("Message to shout") String text
     ) {
@@ -113,9 +117,13 @@ public class RabbitChatConnector {
                 .map(Map.Entry::getValue)
                 .findAny()
                 .orElseThrow(() -> new CommandError("No such channel: " + channel));
-        var messageComponent = channelRoute.convertDiscordMessageToComponent(guild, user, message, channelRoute.config);
-        var chatMessage      = new ChatMessage(null, user.getEffectiveName(), text, messageComponent.build());
-        channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, "discord", channel, chatMessage));
+        var messageComponent = channelRoute.convertDiscordMessageToComponent(guild,
+                user,
+                null,
+                channelRoute.config,
+                text);
+        var chatMessage = new ChatMessage(null, user.getEffectiveName(), text, messageComponent.build());
+        channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
     @Value
@@ -132,7 +140,7 @@ public class RabbitChatConnector {
         }
 
         private TextComponent.@NotNull Builder convertDiscordMessageToComponent(
-                Guild guild, User author, Message msg, Channel config) {
+                Guild guild, User author, @Nullable Message msg, Channel config, String contentRaw) {
             var inviteUrl = Optional.ofNullable(config.getDiscord()).map(DiscordChannel::getInviteUrl).orElse(null);
             var discord   = text("DISCORD", BLUE);
             if (inviteUrl != null) discord = discord.hoverEvent(showText(text("Get Invite...")))
@@ -146,6 +154,10 @@ public class RabbitChatConnector {
                     .map(role -> role.getColors().getPrimary())
                     .map(color -> TextColor.color(color.getRGB()))
                     .orElse(WHITE);
+            var authorName = text(author.getEffectiveName(), authorColor);
+            if (msg != null) authorName = authorName.hoverEvent(showText(text("Jump to Message...")))
+                    .clickEvent(openUrl(msg.getJumpUrl()));
+            else authorName = authorName.hoverEvent(showText(text("Message was shouted; cannot jump", RED)));
 
             return text().append(text("[", GRAY))
                     .append(discord)
@@ -155,31 +167,38 @@ public class RabbitChatConnector {
                             .hoverEvent(showText(text("Open Channel...")))
                             .clickEvent(openUrl(channel.getJumpUrl())))
                     .append(text(" <", GRAY))
-                    .append(text(author.getEffectiveName(),
-                            authorColor).hoverEvent(showText(text("Jump to Message...")))
-                            .clickEvent(openUrl(msg.getJumpUrl())))
+                    .append(authorName)
                     .append(text("> ", GRAY))
-                    .append(new ChatMessageParser().parse(msg.getContentRaw()));
+                    .append(new ChatMessageParser().parse(contentRaw));
         }
 
         @Override
         public void onMessageReceived(MessageReceivedEvent event) {
             var author = event.getAuthor();
             if (author.isBot()) return;
-            var msg = event.getMessage();
+            var msg   = event.getMessage();
+            var guild = event.getGuild();
 
-            var messageComponent = convertDiscordMessageToComponent(event.getGuild(), author, msg, config);
+            var messageComponent = convertDiscordMessageToComponent(guild, author, msg, config, msg.getContentRaw());
             var message = new ChatMessage(null,
-                    author.getEffectiveName(),
+                    Optional.ofNullable(guild.getMember(author))
+                            .map(Member::getEffectiveName)
+                            .orElseGet(author::getName),
                     msg.getContentDisplay(),
                     messageComponent.build());
 
-            var packet = new ChatMessagePacketImpl(PacketType.CHAT, "discord", config.getName(), message);
+            var packet = new ChatMessagePacketImpl(PacketType.CHAT,
+                    ENDPOINT_NAME,
+                    config.getName(),
+                    message,
+                    List.of(ENDPOINT_NAME));
             route.send(packet);
         }
 
         @Override
         public void accept(ChatMessagePacket packet) {
+            if (packet.getRoute().contains(ENDPOINT_NAME)) return;
+
             var builder = new WebhookMessageBuilder();
             var msg     = packet.getMessage();
             switch (packet.getPacketType()) {
