@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine;
 
-import com.ampznetwork.herobrine.discord.DiscordBotProvider;
+import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.herobrine.model.cfg.Config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -9,6 +9,10 @@ import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.comroid.annotations.Default;
 import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.adp.JSON;
@@ -24,7 +28,6 @@ import org.mariadb.jdbc.Driver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -41,7 +44,7 @@ import java.util.stream.Collectors;
 @Log
 @SpringBootApplication
 @EnableJpaRepositories(basePackages = "com.ampznetwork.herobrine.repo")
-public class Program {
+public class Program extends ListenerAdapter {
     private static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
     public static void main(String[] args) {
@@ -79,6 +82,11 @@ public class Program {
                 });
     }
 
+    @Override
+    public void onGenericEvent(GenericEvent event) {
+        super.onGenericEvent(event);
+    }
+
     @Bean
     public ObjectMapper objectMapper() {
         return new ObjectMapper(JsonFactory.builder()
@@ -105,6 +113,11 @@ public class Program {
     }
 
     @Bean
+    public ChatMessagePacket.ByteConverter packetConverter(@Autowired ObjectMapper objectMapper) {
+        return new ChatMessagePacket.JacksonByteConverter(objectMapper);
+    }
+
+    @Bean
     public Config config(@Autowired ObjectMapper objectMapper, @Autowired File configFile) throws IOException {
         return objectMapper.readValue(configFile, Config.class);
     }
@@ -125,21 +138,20 @@ public class Program {
         var cmdr = new CommandManager();
         cmdr.addChild(this);
         cmdr.register(this);
-
         return cmdr;
     }
 
     @Bean
-    @ConditionalOnBean(DiscordBotProvider.class)
-    public JDA jda(@Autowired DiscordBotProvider provider) {
-        return provider.getDefaultModule().getJda();
+    public JDA jda(@Autowired Config config) throws InterruptedException {
+        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS))
+                .addEventListeners(this)
+                .build()
+                .awaitReady();
     }
 
     @Bean
-    @ConditionalOnBean(DiscordBotProvider.class)
-    public JdaCommandAdapter cmdrJdaAdapter(@Autowired CommandManager cmdr, @Autowired JDA jda)
-    throws InterruptedException {
-        var adp = new JdaCommandAdapter(cmdr, jda.awaitReady());
+    public JdaCommandAdapter cmdrJdaAdapter(@Autowired CommandManager cmdr, @Autowired JDA jda) {
+        var adp = new JdaCommandAdapter(cmdr, jda);
         adp.setPurgeCommands(FileFlag.consume(COMMAND_PURGE_FILE));
         cmdr.addChild(adp);
         return adp;
