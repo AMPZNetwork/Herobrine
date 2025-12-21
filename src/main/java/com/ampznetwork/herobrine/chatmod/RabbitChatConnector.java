@@ -122,7 +122,10 @@ public class RabbitChatConnector {
                 null,
                 channelRoute.config,
                 text);
-        var chatMessage = new ChatMessage(null, user.getEffectiveName(), text, messageComponent.build());
+        var senderName = Optional.ofNullable(guild.getMember(user))
+                .map(Member::getEffectiveName)
+                .orElseGet(user::getName);
+        var chatMessage = new ChatMessage(null, senderName, text, messageComponent.build());
         channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
