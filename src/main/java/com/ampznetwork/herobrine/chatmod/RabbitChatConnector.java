@@ -177,6 +177,8 @@ public class RabbitChatConnector {
 
         @Override
         public void onMessageReceived(MessageReceivedEvent event) {
+            if (!event.getChannel().equals(this.channel)) return;
+
             var author = event.getAuthor();
             if (author.isBot()) return;
             var msg   = event.getMessage();
