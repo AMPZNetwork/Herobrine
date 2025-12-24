@@ -162,6 +162,16 @@ public class RabbitChatConnector {
                     .clickEvent(openUrl(msg.getJumpUrl()));
             else authorName = authorName.hoverEvent(showText(text("Message was shouted; cannot jump", RED)));
 
+            var content = new ChatMessageParser().parse(contentRaw);
+            if (msg != null) {
+                var size = msg.getAttachments().size();
+                if (size != 0) {
+                    content = content.append(text("%s[%d attachment%s]".formatted(contentRaw.isBlank() ? "" : " ",
+                            size,
+                            size == 1 ? "" : "s")));
+                }
+            }
+
             return text().append(text("[", GRAY))
                     .append(discord)
                     .append(text("] #", GRAY))
@@ -172,7 +182,7 @@ public class RabbitChatConnector {
                     .append(text(" <", GRAY))
                     .append(authorName)
                     .append(text("> ", GRAY))
-                    .append(new ChatMessageParser().parse(contentRaw));
+                    .append(content);
         }
 
         @Override
