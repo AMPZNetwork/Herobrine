@@ -224,7 +224,7 @@ public class RabbitChatConnector {
             }
 
             var senderName = msg.getSenderName();
-            var message = builder.setUsername(senderName)
+            var message = builder.setUsername("[" + Util.Kyori.sanitizePlain(packet.getSource()) + "] " + senderName)
                     .setAvatarUrl("https://mc-heads.net/avatar/" + senderName)
                     .build();
             obtainWebhook().thenCompose(webhook -> webhook.send(message))
