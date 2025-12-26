@@ -156,6 +156,7 @@ public class RabbitChatConnector {
                 .map(playerList -> Bold.apply(playerList.getKey()) + playerList.getValue()
                         .stream()
                         .map(playerEntry -> playerEntry.player.getName())
+                        .map(Util.Kyori::sanitizePlain)
                         .collect(Collectors.joining("\n- ", "\n- ", "")))
                 .collect(Collectors.joining("\n", Underline.apply(Bold.apply("Online Players")) + '\n', ""));
         var discord = config.getChannels().getFirst().getDiscord();
@@ -306,8 +307,9 @@ public class RabbitChatConnector {
 
     private record PlayerEntry(String server, Player player) {
         static PlayerEntry of(ChatMessagePacket packet) {
+            var source = Util.Kyori.sanitizePlain(packet.getSource());
             var sender = Objects.requireNonNull(packet.getMessage().getSender(), "Packet has no sender object");
-            return new PlayerEntry(packet.getSource(), sender);
+            return new PlayerEntry(source, sender);
         }
     }
 
