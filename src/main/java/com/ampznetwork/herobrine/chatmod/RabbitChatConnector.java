@@ -30,6 +30,7 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Debug;
+import org.comroid.api.func.util.Streams;
 import org.comroid.api.net.Rabbit;
 import org.comroid.api.text.StringMode;
 import org.comroid.api.tree.UncheckedCloseable;
@@ -157,8 +158,10 @@ public class RabbitChatConnector {
                         .stream()
                         .map(playerEntry -> playerEntry.player.getName())
                         .map(Util.Kyori::sanitizePlain)
+                        .collect(Streams.orElseGet(() -> "(no players online)"))
                         .collect(Collectors.joining("\n- ", "\n- ", "")))
-                .collect(Collectors.joining("\n", Underline.apply(Bold.apply("Online Players")) + '\n', ""));
+                .collect(Streams.orElseGet(() -> "(no players online)"))
+                .collect(Collectors.joining("\n- ", Underline.apply(Bold.apply("Online Players")) + '\n', ""));
         var discord = config.getChannels().getFirst().getDiscord();
         if (discord == null) return;
         var channelId = discord.getChannelId();
