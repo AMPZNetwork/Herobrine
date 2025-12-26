@@ -12,6 +12,7 @@ import com.ampznetwork.chatmod.api.model.protocol.internal.ChatMessagePacketImpl
 import com.ampznetwork.chatmod.api.model.protocol.internal.PacketType;
 import com.ampznetwork.chatmod.api.util.ChatMessageParser;
 import com.ampznetwork.herobrine.model.cfg.Config;
+import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
 import lombok.Value;
 import lombok.extern.java.Log;
@@ -23,6 +24,7 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.managers.channel.middleman.StandardGuildMessageChannelManager;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -45,8 +47,11 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,6 +64,7 @@ import static net.kyori.adventure.text.Component.*;
 import static net.kyori.adventure.text.event.ClickEvent.*;
 import static net.kyori.adventure.text.event.HoverEvent.*;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static org.comroid.api.text.Markdown.*;
 
 @Log
 @Value
@@ -66,6 +72,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 public class RabbitChatConnector {
     public static final String ENDPOINT_NAME = "discord";
     @Autowired          Config config;
+    Map<String, Collection<PlayerEntry>> playerLists = new ConcurrentHashMap<>();
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -75,6 +82,8 @@ public class RabbitChatConnector {
 
         var channelBindings = event.getApplicationContext().getBean(ChannelBindings.class);
         log.info("Loaded %d channel bindings".formatted(channelBindings.size()));
+
+        refreshPlayerList();
     }
 
     @Bean
@@ -129,9 +138,36 @@ public class RabbitChatConnector {
         channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
+    private void playerJoin(ChatMessagePacket packet) {
+        var entry = PlayerEntry.of(packet);
+        playerLists.computeIfAbsent(entry.server, k -> new HashSet<>()).add(entry);
+        refreshPlayerList();
+    }
+
+    private void playerLeave(ChatMessagePacket packet) {
+        var entry = PlayerEntry.of(packet);
+        playerLists.computeIfAbsent(entry.server, k -> new HashSet<>()).remove(entry);
+        refreshPlayerList();
+    }
+
+    private void refreshPlayerList() {
+        var listStr = playerLists.entrySet()
+                .stream()
+                .map(playerList -> Bold.apply(playerList.getKey()) + playerList.getValue()
+                        .stream()
+                        .map(playerEntry -> playerEntry.player.getName())
+                        .collect(Collectors.joining("\n- ", "\n- ", "")))
+                .collect(Collectors.joining("\n", Underline.apply(Bold.apply("Online Players")) + '\n', ""));
+        var discord = config.getChannels().getFirst().getDiscord();
+        if (discord == null) return;
+        var channelId = discord.getChannelId();
+        var channel   = bean(JDA.class).getGuildChannelById(channelId);
+        if (channel == null) return;
+        ((StandardGuildMessageChannelManager<?, ?>) channel.getManager()).setTopic(listStr).queue();
+    }
+
     @Value
-    public static class ChannelRoute extends ListenerAdapter
-            implements UncheckedCloseable, Consumer<ChatMessagePacket> {
+    public class ChannelRoute extends ListenerAdapter implements UncheckedCloseable, Consumer<ChatMessagePacket> {
         Channel                                  config;
         TextChannel                              channel;
         Rabbit.Exchange.Route<ChatMessagePacket> route;
@@ -216,6 +252,7 @@ public class RabbitChatConnector {
 
             var builder = new WebhookMessageBuilder();
             var msg     = packet.getMessage();
+            var sender = packet.getMessage().getSender();
             switch (packet.getPacketType()) {
                 case CHAT:
                     var sb = new StringBuilder();
@@ -224,9 +261,13 @@ public class RabbitChatConnector {
                     break;
                 case JOIN:
                     builder.setContent("> Joined the game");
+                    if (sender == null) break;
+                    playerJoin(packet);
                     break;
                 case LEAVE:
                     builder.setContent("> Left the game");
+                    if (sender == null) break;
+                    playerLeave(packet);
                     break;
                 default:
                     builder.setContent(msg.getMessageString());
@@ -260,6 +301,13 @@ public class RabbitChatConnector {
                                             .submit()))
                             .thenApply(webhook -> WebhookClientBuilder.fromJDA(webhook).build()))
                     .exceptionally(Debug.exceptionLogger("Internal Exception when obtaining Webhook"));
+        }
+    }
+
+    private record PlayerEntry(String server, Player player) {
+        static PlayerEntry of(ChatMessagePacket packet) {
+            var sender = Objects.requireNonNull(packet.getMessage().getSender(), "Packet has no sender object");
+            return new PlayerEntry(packet.getSource(), sender);
         }
     }
 
