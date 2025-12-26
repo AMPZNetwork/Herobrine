@@ -160,8 +160,8 @@ public class RabbitChatConnector {
                         .map(Util.Kyori::sanitizePlain)
                         .collect(Streams.orElseGet(() -> "(no players online)"))
                         .collect(Collectors.joining("\n- ", "\n- ", "")))
-                .collect(Streams.orElseGet(() -> "(no players online)"))
-                .collect(Collectors.joining("\n- ", Underline.apply(Bold.apply("Online Players")) + '\n', ""));
+                .collect(Streams.orElseGet(() -> "\b\b(no players online)"))
+                .collect(Collectors.joining("\n- ", Underline.apply(Bold.apply("Online Players")) + "\n- ", ""));
         var discord = config.getChannels().getFirst().getDiscord();
         if (discord == null) return;
         var channelId = discord.getChannelId();
