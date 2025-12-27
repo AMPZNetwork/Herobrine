@@ -15,6 +15,7 @@ import com.ampznetwork.herobrine.model.cfg.Config;
 import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -48,6 +49,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -139,6 +142,14 @@ public class RabbitChatConnector {
         channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
+    private void touch(Player player) {
+        playerLists.values()
+                .stream()
+                .flatMap(Collection::stream)
+                .filter(entry -> entry.player.equals(player))
+                .forEach(entry -> entry.timestamp = Instant.now());
+    }
+
     private void playerJoin(ChatMessagePacket packet) {
         var entry = PlayerEntry.of(packet);
         playerLists.computeIfAbsent(entry.server, k -> new HashSet<>()).add(entry);
@@ -152,6 +163,16 @@ public class RabbitChatConnector {
     }
 
     private void refreshPlayerList() {
+        playerLists.values()
+                .forEach(list -> list.removeIf(entry -> entry.timestamp.plus(1, ChronoUnit.HOURS)
+                        .isBefore(Instant.now())));
+        playerLists.entrySet()
+                .stream()
+                .filter(e -> e.getValue().isEmpty())
+                .map(Map.Entry::getKey)
+                .toList()
+                .forEach(playerLists::remove);
+
         var listStr = playerLists.entrySet()
                 .stream()
                 .map(playerList -> Bold.apply(playerList.getKey()) + playerList.getValue()
@@ -257,6 +278,9 @@ public class RabbitChatConnector {
             var builder = new WebhookMessageBuilder();
             var msg     = packet.getMessage();
             var sender = packet.getMessage().getSender();
+
+            touch(sender);
+
             switch (packet.getPacketType()) {
                 case CHAT:
                     var sb = new StringBuilder();
@@ -308,11 +332,16 @@ public class RabbitChatConnector {
         }
     }
 
-    private record PlayerEntry(String server, Player player) {
+    @Value
+    private static class PlayerEntry {
+        String server;
+        Player player;
+        @NonFinal Instant timestamp;
+
         static PlayerEntry of(ChatMessagePacket packet) {
             var source = Util.Kyori.sanitizePlain(packet.getSource());
             var sender = Objects.requireNonNull(packet.getMessage().getSender(), "Packet has no sender object");
-            return new PlayerEntry(source, sender);
+            return new PlayerEntry(source, sender, Instant.now());
         }
     }
 
