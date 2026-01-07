@@ -52,10 +52,12 @@ public class SecurityConfig {
     @ConditionalOnMissingBean(type = "org.springframework.boot.test.mock.mockito.MockitoPostProcessor")
     public SecurityFilterChain configureSecure(HttpSecurity http) throws Exception {
         log.info("Using OAuth2-based SecurityFilterChain");
-        return http.authorizeHttpRequests(auth -> auth.requestMatchers("/haste/**")
-                .permitAll()
-                .anyRequest()
-                .authenticated()).oauth2Login(Customizer.withDefaults()).csrf(AbstractHttpConfigurer::disable).build();
+        return http.authorizeHttpRequests(auth -> auth
+                                .requestMatchers("/haste/**").permitAll()
+                        //.anyRequest().authenticated()
+                )
+                //.oauth2Login(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable).build();
     }
 
     @Bean
