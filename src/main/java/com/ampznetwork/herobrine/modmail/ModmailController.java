@@ -3,6 +3,7 @@ package com.ampznetwork.herobrine.modmail;
 import net.dv8tion.jda.api.JDA;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -11,6 +12,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequestMapping("/modmail")
 public class ModmailController {
     @Autowired JDA jda;
+
+    @GetMapping
+    public String get() {
+        return "modmail";
+    }
 
     @PostMapping
     public void post(@RequestParam("content") String content) {
