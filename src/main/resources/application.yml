@@ -1,5 +1,3 @@
-server:
-  port: 25545
 spring:
   application:
     name: Herobrine
