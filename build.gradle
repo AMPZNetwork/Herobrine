@@ -62,6 +62,9 @@ dependencies {
     // core function
     implementation project(':japi')
 
+    // minecraft
+    implementation 'org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT'
+
     // discord
     implementation project(':ChatMod:discord')
     implementation 'net.dv8tion:JDA:+'
