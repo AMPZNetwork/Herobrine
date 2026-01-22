@@ -12,10 +12,7 @@ description = 'Herobrine'
 version = '0'
 
 [project(':LibMod:api'),
- project(':LibMod:core'),
- project(':ChatMod:api'),
- project(':ChatMod:core'),
- project(':ChatMod:discord')].each {
+ project(':ChatMod:api')].each {
     apply from: 'ModSuite/gradle/scripts/setup/global.gradle'
 }
 
@@ -61,13 +58,18 @@ allprojects*.repositories {
 dependencies {
     // core function
     implementation project(':japi')
+    implementation project(':ChatMod:api')
 
     // minecraft
     implementation 'org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT'
 
     // discord
-    implementation project(':ChatMod:discord')
     implementation 'net.dv8tion:JDA:+'
+    implementation 'club.minnced:discord-webhooks:+'
+    implementation 'com.kcthota:emoji4j:+'
+
+    // rabbitmq
+    implementation 'com.rabbitmq:amqp-client:+'
 
     // dev
     //developmentOnly 'org.springframework.boot:spring-boot-devtools' <- doesnt work fsr with this loader config
