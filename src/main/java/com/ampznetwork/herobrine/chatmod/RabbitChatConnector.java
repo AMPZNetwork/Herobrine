@@ -10,7 +10,8 @@ import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.api.model.protocol.internal.ChatMessagePacketImpl;
 import com.ampznetwork.chatmod.api.model.protocol.internal.PacketType;
-import com.ampznetwork.chatmod.api.util.ChatMessageParser;
+import com.ampznetwork.chatmod.api.parse.ChatMessageParser.MessageBundle;
+import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
 import com.ampznetwork.herobrine.model.cfg.Config;
 import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
@@ -26,9 +27,9 @@ import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.managers.channel.middleman.StandardGuildMessageChannelManager;
-import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.func.util.Streams;
@@ -39,7 +40,6 @@ import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
 import org.comroid.commands.model.CommandPrivacyLevel;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -74,8 +74,24 @@ import static org.comroid.api.text.Markdown.*;
 @Value
 @Component
 public class RabbitChatConnector {
-    public static final String ENDPOINT_NAME = "discord";
-    @Autowired          Config config;
+    private static final ChatModConfig chatModConfig = new ChatModConfig() {
+        @Override
+        public String getServerName() {
+            return "§9DISCORD";
+        }
+
+        @Override
+        public Rabbit getRabbit() {
+            return null;
+        }
+
+        @Override
+        public String getFormattingScheme() {
+            return "&7[%server_name%&7] #&6%channel_name%&7 <%player_name%&7> &r%message%";
+        }
+    };
+    public static final  String        ENDPOINT_NAME = "discord";
+    @Autowired           Config        config;
     Map<String, Collection<PlayerEntry>> playerLists = new ConcurrentHashMap<>();
 
     @EventListener
@@ -130,15 +146,11 @@ public class RabbitChatConnector {
                 .map(Map.Entry::getValue)
                 .findAny()
                 .orElseThrow(() -> new CommandError("No such channel: " + channel));
-        var messageComponent = channelRoute.convertDiscordMessageToComponent(guild,
-                user,
-                null,
-                channelRoute.config,
-                text);
         var senderName = Optional.ofNullable(guild.getMember(user))
                 .map(Member::getEffectiveName)
                 .orElseGet(user::getName);
-        var chatMessage = new ChatMessage(null, senderName, text, messageComponent.build());
+        var bundle      = channelRoute.convertDiscordMessageToComponent(guild, user, null, channelRoute.config, text);
+        var chatMessage = new ChatMessage(null, senderName, bundle);
         channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
@@ -194,19 +206,22 @@ public class RabbitChatConnector {
     @Value
     public class ChannelRoute extends ListenerAdapter implements UncheckedCloseable, Consumer<ChatMessagePacket> {
         Channel                                  config;
-        TextChannel                              channel;
+        TextChannel discordChannel;
         Rabbit.Exchange.Route<ChatMessagePacket> route;
 
-        public ChannelRoute(Channel config, TextChannel channel, Rabbit.Exchange.Route<ChatMessagePacket> route) {
+        public ChannelRoute(
+                Channel config, TextChannel discordChannel, Rabbit.Exchange.Route<ChatMessagePacket> route) {
             this.config = config;
-            (this.channel = channel).getJDA().addEventListener(this);
+            (this.discordChannel = discordChannel).getJDA().addEventListener(this);
             (this.route = route).subscribeData(this);
         }
 
-        private TextComponent.@NotNull Builder convertDiscordMessageToComponent(
-                Guild guild, User author, @Nullable Message msg, Channel config, String contentRaw) {
-            var inviteUrl = Optional.ofNullable(config.getDiscord()).map(DiscordChannel::getInviteUrl).orElse(null);
-            var discord   = text("DISCORD", BLUE);
+        private MessageBundle convertDiscordMessageToComponent(
+                Guild guild, User author, @Nullable Message msg, Channel channelConfig, String contentRaw) {
+            var inviteUrl = Optional.ofNullable(channelConfig.getDiscord())
+                    .map(DiscordChannel::getInviteUrl)
+                    .orElse(null);
+            var discord = text("DISCORD", BLUE);
             if (inviteUrl != null) discord = discord.hoverEvent(showText(text("Get Invite...")))
                     .clickEvent(openUrl(inviteUrl));
 
@@ -223,45 +238,46 @@ public class RabbitChatConnector {
                     .clickEvent(openUrl(msg.getJumpUrl()));
             else authorName = authorName.hoverEvent(showText(text("Message was shouted; cannot jump", RED)));
 
-            var content = new ChatMessageParser().parse(contentRaw);
+            var bundle = com.ampznetwork.chatmod.api.parse.ChatMessageParser.parse(contentRaw,
+                    chatModConfig,
+                    channelConfig,
+                    null,
+                    author.getEffectiveName());
+
             if (msg != null) {
                 var size = msg.getAttachments().size();
-                if (size != 0) {
-                    content = content.append(text("%s[%d attachment%s]".formatted(contentRaw.isBlank() ? "" : " ",
-                            size,
-                            size == 1 ? "" : "s")));
-                }
+                if (size != 0) bundle = bundle.withSuffix(text(" [%d attachment%s]".formatted(size,
+                        size == 1 ? "" : "s")));
             }
 
-            return text().append(text("[", GRAY))
+            return bundle.withPrefix(text().append(text("[", GRAY))
                     .append(discord)
                     .append(text("] #", GRAY))
                     .append(LegacyComponentSerializer.legacyAmpersand()
-                            .deserialize(config.getBestName())
+                            .deserialize(channelConfig.getBestName())
                             .hoverEvent(showText(text("Open Channel...")))
-                            .clickEvent(openUrl(channel.getJumpUrl())))
+                            .clickEvent(openUrl(discordChannel.getJumpUrl())))
                     .append(text(" <", GRAY))
                     .append(authorName)
                     .append(text("> ", GRAY))
-                    .append(content);
+                    .build());
         }
 
         @Override
         public void onMessageReceived(MessageReceivedEvent event) {
-            if (!event.getChannel().equals(this.channel)) return;
+            if (!event.getChannel().equals(this.discordChannel)) return;
 
             var author = event.getAuthor();
             if (author.isBot()) return;
             var msg   = event.getMessage();
             var guild = event.getGuild();
 
-            var messageComponent = convertDiscordMessageToComponent(guild, author, msg, config, msg.getContentRaw());
+            var bundle = convertDiscordMessageToComponent(guild, author, msg, config, msg.getContentRaw());
             var message = new ChatMessage(null,
                     Optional.ofNullable(guild.getMember(author))
                             .map(Member::getEffectiveName)
                             .orElseGet(author::getName),
-                    msg.getContentDisplay(),
-                    messageComponent.build());
+                    bundle);
 
             var packet = new ChatMessagePacketImpl(PacketType.CHAT,
                     ENDPOINT_NAME,
@@ -298,7 +314,8 @@ public class RabbitChatConnector {
                     playerLeave(packet);
                     break;
                 default:
-                    builder.setContent(msg.getMessageString());
+                    builder.setContent(PlainTextComponentSerializer.plainText()
+                            .serialize(packet.getMessage().getFullText()));
                     break;
             }
 
@@ -312,20 +329,20 @@ public class RabbitChatConnector {
 
         @Override
         public void close() {
-            channel.getJDA().removeEventListener(this);
+            discordChannel.getJDA().removeEventListener(this);
             route.close();
         }
 
         private CompletableFuture<WebhookClient> obtainWebhook() {
             //noinspection DataFlowIssue -> we want the exception here for .exceptionallyCompose()
             return CompletableFuture.supplyAsync(() -> WebhookClient.withUrl(config.getDiscord().getWebhookUrl()))
-                    .exceptionallyCompose(ignored -> channel.retrieveWebhooks()
+                    .exceptionallyCompose(ignored -> discordChannel.retrieveWebhooks()
                             .submit()
                             .thenCompose(webhooks -> webhooks.stream()
                                     .filter(webhook -> ChatModules.DiscordProviderConfig.WEBHOOK_NAME.equals(webhook.getName()))
                                     .findAny()
                                     .map(CompletableFuture::completedFuture)
-                                    .orElseGet(() -> channel.createWebhook(ChatModules.DiscordProviderConfig.WEBHOOK_NAME)
+                                    .orElseGet(() -> discordChannel.createWebhook(ChatModules.DiscordProviderConfig.WEBHOOK_NAME)
                                             .submit()))
                             .thenApply(webhook -> WebhookClientBuilder.fromJDA(webhook).build()))
                     .exceptionally(Debug.exceptionLogger("Internal Exception when obtaining Webhook"));
