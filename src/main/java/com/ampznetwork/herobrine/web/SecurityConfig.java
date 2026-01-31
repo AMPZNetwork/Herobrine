@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.web;
 
-import com.ampznetwork.herobrine.model.cfg.Config;
+import com.ampznetwork.herobrine.config.model.Config;
 import lombok.extern.java.Log;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;

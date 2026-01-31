@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.model.cfg;
+package com.ampznetwork.herobrine.config.model;
 
 import lombok.Data;
 

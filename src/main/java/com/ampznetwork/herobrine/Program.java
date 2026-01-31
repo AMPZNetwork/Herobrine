@@ -1,7 +1,7 @@
 package com.ampznetwork.herobrine;
 
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
-import com.ampznetwork.herobrine.model.cfg.Config;
+import com.ampznetwork.herobrine.config.model.Config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.StreamReadFeature;
@@ -17,7 +17,6 @@ import org.comroid.annotations.Default;
 import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.adp.JSON;
 import org.comroid.api.io.FileFlag;
-import org.comroid.api.java.ResourceLoader;
 import org.comroid.api.net.REST;
 import org.comroid.api.text.Markdown;
 import org.comroid.commands.Command;
@@ -37,7 +36,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import javax.sql.DataSource;
 import java.io.File;
-import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -106,20 +104,8 @@ public class Program extends ListenerAdapter {
     }
 
     @Bean
-    public File configFile(@Autowired File botDir) throws IOException {
-        var file = new File(botDir, "config.json5");
-        ResourceLoader.assertFile(Program.class, "/config.json5", file, null);
-        return file;
-    }
-
-    @Bean
     public ChatMessagePacket.ByteConverter packetConverter(@Autowired ObjectMapper objectMapper) {
         return new ChatMessagePacket.JacksonByteConverter(objectMapper);
-    }
-
-    @Bean
-    public Config config(@Autowired ObjectMapper objectMapper, @Autowired File configFile) throws IOException {
-        return objectMapper.readValue(configFile, Config.class);
     }
 
     @Bean

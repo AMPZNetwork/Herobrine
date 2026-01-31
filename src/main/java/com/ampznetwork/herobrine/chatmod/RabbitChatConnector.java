@@ -12,7 +12,7 @@ import com.ampznetwork.chatmod.api.model.protocol.internal.ChatMessagePacketImpl
 import com.ampznetwork.chatmod.api.model.protocol.internal.PacketType;
 import com.ampznetwork.chatmod.api.parse.ChatMessageParser.MessageBundle;
 import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
-import com.ampznetwork.herobrine.model.cfg.Config;
+import com.ampznetwork.herobrine.config.model.Config;
 import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
 import lombok.Value;
