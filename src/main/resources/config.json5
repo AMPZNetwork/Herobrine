@@ -5,37 +5,24 @@
     "password": "dev"
   },
   "discord": {
-    "modules": {
-      "log": {
-        "enable": true,
-        "name": "log"
-      },
-      "rabbitmq": {
-        "enable": true,
-        "name": "rabbitmq",
-        "rabbitUri": "amqp://guest:guest@localhost:5672",
-        "exchange": "minecraft.chat"
-      },
-      "aurionchat": {
-        "enable": true,
-        "name": "aurionchat",
-        "rabbitUri": "amqp://guest:guest@localhost:5672",
-        "exchange": "aurion.chat",
-        "contentPattern": "\\[[\\w&§]+]\\s[\\w&§]+\\s[\\w-_&§]+:\\s(.*)"
-      },
+    "token": null
+  },
+  "luckperms": {
+    "uri": null,
+    "token": null,
+  },
+  "rabbitmq": {
+    "uri": "amqp://guest:guest@localhost:5672"
+  },
+  "channels": [
+    {
+      "name": "global",
+      "alias": "g",
+      "display": "&eg",
       "discord": {
-        "enable": false,
-        "name": "discord",
-        "token": "<token>"
-      },
-    },
-    "channels": [
-      {
-        "enable": true,
-        "name": "global",
-        "alias": "g",
-        "publish": true
+        "channelId": null
       }
-    ]
-  }
+    }
+  ],
+  "oAuth2": []
 }

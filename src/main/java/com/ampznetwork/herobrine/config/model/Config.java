@@ -9,9 +9,10 @@ import java.util.List;
 
 @Data
 public class Config implements DataNode {
-    DatabaseInfo  database = new DatabaseInfo();
-    DiscordInfo      discord  = new DiscordInfo();
-    RabbitMqInfo  rabbitmq = new RabbitMqInfo();
-    List<Channel> channels = new ArrayList<>();
-    List<OAuth2Info> oAuth2   = new ArrayList<>();
+    DatabaseInfo     database  = new DatabaseInfo();
+    DiscordInfo      discord   = new DiscordInfo();
+    LuckPermsInfo    luckperms = new LuckPermsInfo();
+    RabbitMqInfo     rabbitmq  = new RabbitMqInfo();
+    List<Channel>    channels  = new ArrayList<>();
+    List<OAuth2Info> oAuth2    = new ArrayList<>();
 }
