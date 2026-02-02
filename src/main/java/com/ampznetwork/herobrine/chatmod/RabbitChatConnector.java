@@ -195,7 +195,9 @@ public class RabbitChatConnector {
                         .collect(Collectors.joining("\n- ", "\n- ", "")))
                 .collect(Streams.orElseGet(() -> "\b\b(no players online)"))
                 .collect(Collectors.joining("\n- ", Underline.apply(Bold.apply("Online Players")) + "\n- ", ""));
-        var discord = config.getChannels().getFirst().getDiscord();
+        var channels = config.getChannels();
+        if (channels == null || channels.isEmpty()) return;
+        var discord = channels.getFirst().getDiscord();
         if (discord == null) return;
         var channelId = discord.getChannelId();
         var channel   = bean(JDA.class).getGuildChannelById(channelId);

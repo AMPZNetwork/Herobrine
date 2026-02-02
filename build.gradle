@@ -64,7 +64,7 @@ dependencies {
     implementation 'org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT'
 
     // discord
-    implementation 'net.dv8tion:JDA:+'
+    implementation 'net.dv8tion:JDA:6.+'
     implementation 'club.minnced:discord-webhooks:+'
     implementation 'com.kcthota:emoji4j:+'
 

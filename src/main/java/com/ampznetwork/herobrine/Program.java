@@ -33,6 +33,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import javax.sql.DataSource;
 import java.io.File;
@@ -40,6 +41,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Log
+@EnableScheduling
 @SpringBootApplication
 @EnableJpaRepositories(basePackages = "com.ampznetwork.herobrine.repo")
 public class Program extends ListenerAdapter {
