@@ -30,8 +30,7 @@ public class SecurityConfig {
     @Bean
     @ConditionalOnExpression("#{!(systemEnvironment['DEBUG']?:'false').equals('true')}")
     public @Nullable ClientRegistrationRepository clientRegistrationRepository(@Autowired Config config) {
-        var registrations = config.getOAuth2()
-                .stream()
+        var registrations = config.getOAuth2().stream()
                 .filter(oAuth -> !oAuth.getName().isBlank())
                 .map(info -> ClientRegistration.withRegistrationId(info.getName())
                         .clientId(info.getClientId())
@@ -45,15 +44,16 @@ public class SecurityConfig {
                         .userNameAttributeName(info.getUserNameAttributeName())
                         .build())
                 .toArray(ClientRegistration[]::new);
-        return new InMemoryClientRegistrationRepository(registrations);
+        return registrations.length == 0 ? null : new InMemoryClientRegistrationRepository(registrations);
     }
 
     @Bean
     @ConditionalOnBean(ClientRegistrationRepository.class)
-    @ConditionalOnMissingBean(type = "org.springframework.boot.test.mock.mockito.MockitoPostProcessor")
+    //@ConditionalOnMissingBean(type = "org.springframework.boot.test.mock.mockito.MockitoPostProcessor")
     public SecurityFilterChain configureSecure(HttpSecurity http) throws Exception {
         log.info("Using OAuth2-based SecurityFilterChain");
-        return http.authorizeHttpRequests(auth -> auth.requestMatchers("/haste/**").permitAll()
+        return http.authorizeHttpRequests(auth -> auth
+                                .requestMatchers("/haste/**").permitAll()
                         //.anyRequest().authenticated()
                 )
                 //.oauth2Login(Customizer.withDefaults())
