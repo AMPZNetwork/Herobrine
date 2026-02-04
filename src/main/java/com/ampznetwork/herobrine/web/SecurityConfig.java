@@ -45,9 +45,7 @@ public class SecurityConfig {
                         .userNameAttributeName(info.getUserNameAttributeName())
                         .build())
                 .toArray(ClientRegistration[]::new);
-        return registrations.length == 0
-               ? new InMemoryClientRegistrationRepository()
-               : new InMemoryClientRegistrationRepository(registrations);
+        return new InMemoryClientRegistrationRepository(registrations);
     }
 
     @Bean
