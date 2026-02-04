@@ -8,12 +8,16 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
+import org.comroid.api.func.util.Pair;
+import org.comroid.api.func.util.Streams;
 import org.comroid.api.model.Authentication;
 import org.comroid.api.net.luckperms.LuckPermsApiWrapper;
 import org.comroid.api.net.luckperms.component.GroupsApi;
 import org.comroid.api.net.luckperms.component.UserApi;
 import org.comroid.api.net.luckperms.model.group.GroupData;
 import org.comroid.api.net.luckperms.model.node.Node;
+import org.comroid.api.net.luckperms.model.node.NodeType;
+import org.comroid.api.net.luckperms.model.user.UserData;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +30,9 @@ import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -41,8 +42,9 @@ import java.util.stream.Stream;
 @Service
 @NoArgsConstructor
 public class RankSyncService extends ListenerAdapter {
-    public static final String META_DISCORD_USER_ID = "ranksync-discord-user-id";
-    public static final String META_DISCORD_ROLE_ID = "ranksync-discord-role-id";
+    public static final String META_DISCORD_USER_ID   = "ranksync-discord-user-id";
+    public static final String META_DISCORD_ROLE_ID   = "ranksync-discord-role-id";
+    public static final String META_DISCORD_ROLE_TIER = "ranksync-tier";
 
     @Lazy @Autowired LuckPermsApiWrapper lpApi;
     @Lazy @Autowired JDA                 jda;
@@ -58,15 +60,9 @@ public class RankSyncService extends ListenerAdapter {
 
     @Command(value = "rankupdate", permission = "8")
     @Description("Perform a refresh on LuckPerms ranks")
-    @Scheduled(initialDelay = 0, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     @SuppressWarnings({ "SuspiciousToArrayCall", "RedundantSuppression" /* false-positive */ })
     public void rankUpdate() {
-        final var repo = new ConcurrentHashMap<UUID, UserEntry>() {
-            UserEntry compute(UUID id) {
-                return computeIfAbsent(id, UserEntry::new);
-            }
-        };
-
         final var userApi  = lpApi.child(UserApi.class).assertion();
         final var groupApi = lpApi.child(GroupsApi.class).assertion();
 
@@ -84,74 +80,96 @@ public class RankSyncService extends ListenerAdapter {
                                     .map(ThrowingFunction.sneaky(CompletableFuture::get))
                                     .collect(Collectors.toMap(GroupData::name, Function.identity())));
                 })
-                .thenCompose(groups -> groupApi.search()
-                        .metaKey(META_DISCORD_ROLE_ID)
-                        .execute()
-                        .thenApply(results -> results.stream()
-                                .peek(group -> log.fine("Fetched LP group by role id metadata: " + group))
-                                .flatMap(result -> Arrays.stream(result.results())
-                                        .sorted(Comparator.comparingInt(node -> groups.containsKey(result.name())
-                                                                                ? groups.get(result.name()).weight()
-                                                                                : 0))
-                                        .map(Node::getKeyValue)
-                                        .flatMap(roleId -> Stream.ofNullable(jda.getRoleById(roleId)))
-                                        .map(role -> new AbstractMap.SimpleImmutableEntry<>(groups.get(result.name()),
-                                                role)))
-                                .collect(Collectors.toMap(e -> e.getKey().name(), Function.identity()))))
                 .thenCompose(groups -> {
-                    var fetchDiscordIds = userApi.search()
+                    final var tiers = groups.values()
+                            .stream()
+                            .filter(group -> group.metadata() != null && group.metadata().meta() != null)
+                            .filter(group -> group.metadata().meta().containsKey(META_DISCORD_ROLE_ID))
+                            .collect(Collectors.groupingBy(group -> group.metadata()
+                                    .meta()
+                                    .get(META_DISCORD_ROLE_TIER)));
+
+                    return userApi.search()
                             .metaKey(META_DISCORD_USER_ID)
                             .execute()
-                            .thenAcceptAsync(results -> {
+                            .thenCompose(results -> {
+                                final @SuppressWarnings("unchecked") CompletableFuture<UserData>[] requests = new CompletableFuture[results.size()];
+                                var                                                                i        = 0;
                                 for (var result : results) {
-                                    log.fine("Fetched LP user by user id metadata: " + result);
-                                    Arrays.stream(result.results())
-                                            .filter(Node::value)
-                                            .findAny()
-                                            .map(Node::getKeyValue)
-                                            .map(Long::parseLong)
-                                            .ifPresent(repo.compute(result.uniqueId())::setDiscordId);
+                                    requests[i] = userApi.get(result.uniqueId());
+                                    requests[i].thenAcceptAsync(group -> log.fine("Fetched generic user data: " + group));
+                                    i++;
                                 }
-                            });
-                    var fetchDiscordGroups = userApi.search()
-                            .nodeKeyStartsWith("group")
-                            .execute()
-                            .thenAcceptAsync(results -> {
-                                for (var result : results) {
-                                    Arrays.stream(result.results())
-                                            .map(Node::getKeyValue)
-                                            .flatMap(groupName -> groups.containsKey(groupName) ? Stream.ofNullable(
-                                                    groups.get(groupName)) : Stream.empty())
-                                            .max(Comparator.comparingInt(e -> e.getKey().weight()))
-                                            .ifPresent(e -> {
-                                                log.fine("Top group & role found for user %s: group %s, role %s".formatted(
-                                                        result.uniqueId(),
-                                                        e.getKey(),
-                                                        e.getValue()));
-                                                repo.compute(result.uniqueId())
-                                                        .setGroup(e.getKey())
-                                                        .setRole(e.getValue());
-                                            });
-                                }
-                            });
-                    return CompletableFuture.allOf(fetchDiscordIds, fetchDiscordGroups);
+                                return CompletableFuture.allOf(requests)
+                                        .thenApply($ -> Arrays.stream(requests)
+                                                .map(ThrowingFunction.sneaky(CompletableFuture::get))
+                                                .toList());
+                            })
+                            .thenApply(users -> users.stream()
+                                    .filter(user -> user.metadata() != null && user.metadata().meta() != null)
+                                    .map(user -> {
+                                        final var discordId = user.metadata().meta().get(META_DISCORD_USER_ID);
+                                        final var userRoles = Arrays.stream(user.nodes())
+                                                .filter(node -> node.type() == NodeType.inheritance)
+                                                .map(Node::getKeyValue)
+                                                .collect(Streams.expandRecursive(groupName -> groups.containsKey(
+                                                        groupName)
+                                                                                              ? Arrays.stream(groups.get(
+                                                                groupName).nodes())
+                                                                                                      .filter(node -> node.type() == NodeType.inheritance)
+                                                                                                      .map(Node::getKeyValue)
+                                                                                              : Stream.empty()))
+                                                .sorted(Comparator.comparingInt(groupName -> groups.containsKey(
+                                                        groupName)
+                                                                                             ? groups.get(groupName)
+                                                                                                     .weight()
+                                                                                             : 0).reversed())
+                                                .flatMap(groupName -> tiers.entrySet()
+                                                        .stream()
+                                                        .flatMap(e -> e.getValue()
+                                                                .stream()
+                                                                .filter(group -> group.name().equals(groupName))
+                                                                .map(group -> new Pair<>(e.getKey(), group))))
+                                                .flatMap(Streams.distinctBy(Pair::getFirst))
+                                                .map(Pair::getSecond)
+                                                .filter(group -> group.metadata() != null && group.metadata()
+                                                                                                     .meta() != null)
+                                                .filter(group -> group.metadata()
+                                                        .meta()
+                                                        .containsKey(META_DISCORD_ROLE_ID))
+                                                .sorted(Comparator.comparingInt(GroupData::weight).reversed())
+                                                .map(group -> group.metadata().meta().get(META_DISCORD_ROLE_ID))
+                                                .flatMap(roleId -> Stream.ofNullable(jda.getRoleById(roleId)))
+                                                .toList();
+                                        return new Pair<>(discordId, userRoles);
+                                    })
+                                    .collect(Collectors.toMap(Pair::getFirst, Pair::getSecond)));
                 })
-                .thenComposeAsync($ -> CompletableFuture.allOf(repo.values().stream().flatMap(entry -> {
-                    var role = entry.getRole();
-                    if (role == null) return Stream.empty();
-                    var guild = role.getGuild();
-
-                    var user = jda.getUserById(entry.getDiscordId());
+                .thenCompose(results -> CompletableFuture.allOf(results.entrySet().stream().flatMap(entry -> {
+                    var user = jda.getUserById(entry.getKey());
                     if (user == null) return Stream.empty();
 
-                    var member = guild.getMember(user);
-                    if (member == null || member.getRoles().contains(role)) {
-                        log.fine("Member %s already has role %s".formatted(member, role));
-                        return Stream.empty();
-                    }
+                    return Stream.of(CompletableFuture.allOf(entry.getValue().stream().flatMap(role -> {
+                        var guild  = role.getGuild();
+                        var member = guild.getMember(user);
 
-                    log.fine("Applying role %s to member %s".formatted(role, member));
-                    return Stream.of(guild.addRoleToMember(member, role).submit());
+                        if (member == null) {
+                            log.fine("Member %s not found in guild %s".formatted(user.getEffectiveName(),
+                                    guild.getName()));
+                            return Stream.empty();
+                        }
+                        if (member.getRoles().contains(role)) {
+                            log.fine("Member %s already has role %s".formatted(member.getEffectiveName(),
+                                    role.getName()));
+                            return Stream.empty();
+                        }
+
+                        log.fine("Applying role %s to member %s".formatted(role.getName(), member.getEffectiveName()));
+                        return Stream.of(guild.addRoleToMember(member, role)
+                                .submit()
+                                .exceptionally(Debug.exceptionLogger("Could not add role %s to member %s".formatted(role.getName(),
+                                        member.getEffectiveName()))));
+                    }).toArray(CompletableFuture[]::new)));
                 }).toArray(CompletableFuture[]::new)))
                 .exceptionally(Debug.exceptionLogger("Could not fetch all necessary LuckPerms data"));
     }

@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Program" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+    <option name="SCHEDULED_DEBUGGER" value="true"/>
     <envs>
       <env name="DEBUG" value="true" />
     </envs>
