@@ -1,12 +1,6 @@
 package com.ampznetwork.herobrine.web;
 
-import com.ampznetwork.herobrine.config.model.Config;
 import lombok.extern.java.Log;
-import org.jetbrains.annotations.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
@@ -14,10 +8,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +17,7 @@ import java.util.List;
 @Log
 @Service
 public class SecurityConfig {
+    /*
     @Bean
     @ConditionalOnExpression("#{!(systemEnvironment['DEBUG']?:'false').equals('true')}")
     public @Nullable ClientRegistrationRepository clientRegistrationRepository(@Autowired Config config) {
@@ -59,10 +50,11 @@ public class SecurityConfig {
                 //.oauth2Login(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable).build();
     }
+     */
 
     @Bean
     @Order
-    @ConditionalOnMissingBean(ClientRegistrationRepository.class)
+    //@ConditionalOnMissingBean(ClientRegistrationRepository.class)
     public SecurityFilterChain configureInsecure(HttpSecurity http) throws Exception {
         log.warning("Using insecure SecurityFilterChain; consider configuring OAuth2 providers!");
         return http.authorizeHttpRequests(auth -> auth.requestMatchers("/haste/**")
