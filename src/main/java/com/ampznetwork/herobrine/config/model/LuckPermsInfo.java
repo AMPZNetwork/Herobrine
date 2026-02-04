@@ -1,9 +1,11 @@
 package com.ampznetwork.herobrine.config.model;
 
 import lombok.Data;
+import org.comroid.annotations.Ignore;
+import org.comroid.api.config.ConfigurationManager;
 
 @Data
 public class LuckPermsInfo {
     String uri;
-    String token;
+    @Ignore(ConfigurationManager.Presentation.class) String token;
 }

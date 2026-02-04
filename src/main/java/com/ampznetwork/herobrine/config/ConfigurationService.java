@@ -50,6 +50,7 @@ public class ConfigurationService {
     public ConfigurationManager<Config>.Presentation$JDA configurationPresentation$discord(
             @Autowired TextChannel discordConfigChannel, @Autowired ConfigurationManager<Config> configurationManager) {
         var presentation = configurationManager.new Presentation$JDA(discordConfigChannel);
+        presentation.clear();
         presentation.refresh();
         return presentation;
     }
