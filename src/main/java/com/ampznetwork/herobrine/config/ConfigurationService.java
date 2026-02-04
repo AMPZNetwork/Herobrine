@@ -3,20 +3,34 @@ package com.ampznetwork.herobrine.config;
 import com.ampznetwork.herobrine.Program;
 import com.ampznetwork.herobrine.config.model.Config;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;
+import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.api.config.ConfigurationManager;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.java.ResourceLoader;
+import org.comroid.commands.impl.CommandManager;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
 
+@Log
 @Service
-public class ConfigurationService {
+public class ConfigurationService extends ListenerAdapter {
+    @Lazy @Autowired TextChannel discordConfigChannel;
+
     @Bean
     public File configFile(@Autowired File botDir) throws IOException {
         var file = new File(botDir, "config.json5");
@@ -53,5 +67,21 @@ public class ConfigurationService {
         presentation.clear();
         presentation.refresh();
         return presentation;
+    }
+
+    @Override
+    public void onMessageReceived(@NonNull MessageReceivedEvent event) {
+        if (!event.getChannel().equals(discordConfigChannel)) return;
+        if (event.getAuthor() instanceof SelfUser) return;
+        event.getMessage().delete().queue();
+    }
+
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) {
+        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
+        event.getApplicationContext().getBean(CommandManager.class).register(this);
+
+        log.info("Initialized");
     }
 }
