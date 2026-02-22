@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
 
 @Log
 @Service
@@ -64,7 +65,13 @@ public class ConfigurationService extends ListenerAdapter {
     public ConfigurationManager<Config>.Presentation$JDA configurationPresentation$discord(
             @Autowired TextChannel discordConfigChannel, @Autowired ConfigurationManager<Config> configurationManager) {
         var presentation = configurationManager.new Presentation$JDA(discordConfigChannel);
-        presentation.clear();
+
+        try {
+            presentation.clear();
+        } catch (Throwable t) {
+            log.log(Level.WARNING, "Could not clear old config presentation messages", t);
+        }
+
         presentation.refresh();
         return presentation;
     }
