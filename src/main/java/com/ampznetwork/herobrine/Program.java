@@ -1,6 +1,5 @@
 package com.ampznetwork.herobrine;
 
-import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.herobrine.config.model.Config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -103,11 +102,6 @@ public class Program extends ListenerAdapter {
     @Bean
     public File botDir() {
         return new File("/srv/herobrine/");
-    }
-
-    @Bean
-    public ChatMessagePacket.ByteConverter packetConverter(@Autowired ObjectMapper objectMapper) {
-        return new ChatMessagePacket.JacksonByteConverter(objectMapper);
     }
 
     @Bean

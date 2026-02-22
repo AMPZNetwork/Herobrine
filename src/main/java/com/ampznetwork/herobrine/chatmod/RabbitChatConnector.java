@@ -8,8 +8,7 @@ import com.ampznetwork.chatmod.api.model.config.channel.Channel;
 import com.ampznetwork.chatmod.api.model.config.discord.DiscordChannel;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
-import com.ampznetwork.chatmod.api.model.protocol.internal.ChatMessagePacketImpl;
-import com.ampznetwork.chatmod.api.model.protocol.internal.PacketType;
+import com.ampznetwork.chatmod.api.model.protocol.PacketType;
 import com.ampznetwork.chatmod.api.parse.ChatMessageParser.MessageBundle;
 import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
 import com.ampznetwork.herobrine.config.model.Config;
@@ -118,7 +117,7 @@ public class RabbitChatConnector {
 
     @Bean
     public ChannelBindings channelBindings(
-            @Autowired ChatMessagePacket.ByteConverter packetConverter, @Autowired Config config,
+            @Autowired JacksonPacketConverter packetConverter, @Autowired Config config,
             @Autowired Rabbit.Exchange exchange, @Autowired JDA jda
     ) {
         return new ChannelBindings(config.getChannels().stream().filter(channel -> {
@@ -151,7 +150,7 @@ public class RabbitChatConnector {
                 .orElseGet(user::getName);
         var bundle      = channelRoute.convertDiscordMessageToComponent(guild, user, null, channelRoute.config, text);
         var chatMessage = new ChatMessage(null, senderName, bundle);
-        channelRoute.getRoute().send(new ChatMessagePacketImpl(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
+        channelRoute.getRoute().send(new ChatMessagePacket(PacketType.CHAT, ENDPOINT_NAME, channel, chatMessage));
     }
 
     private void touch(Player player) {
@@ -281,7 +280,7 @@ public class RabbitChatConnector {
                             .orElseGet(author::getName),
                     bundle);
 
-            var packet = new ChatMessagePacketImpl(PacketType.CHAT,
+            var packet = new ChatMessagePacket(PacketType.CHAT,
                     ENDPOINT_NAME,
                     config.getName(),
                     message,
