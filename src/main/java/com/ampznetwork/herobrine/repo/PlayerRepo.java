@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.repo;
 
-import com.ampznetwork.herobrine.model.entity.Player;
+import com.ampznetwork.herobrine.model.Player;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
