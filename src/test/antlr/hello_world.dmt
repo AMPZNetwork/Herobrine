@@ -1,2 +1,1 @@
-set content = "Hello World and Hello, " + user;
-
+message.content = "Hello World";

@@ -22,8 +22,8 @@ operator_binary
 
 reference_chain
     : WORD #refChainBase
-    | reference_chain QUESTION DOT WORD #refChainProperty
-    | reference_chain QUESTION DOT WORD arg_list #refChainFunction
+    | reference_chain QUESTION? DOT WORD #refChainProperty
+    | reference_chain QUESTION? DOT WORD arg_list #refChainFunction
 ;
 
 property_initializer: reference_chain EQUALS expression;
@@ -43,14 +43,14 @@ expression
 ;
 
 statement
-    : reference_chain EQUALS expression SEMICOLON #stmtSet
-    | IF PARENS_L expression PARENS_R onTrue=code_block (ELSE onFalse=code_block)? #stmtIfElse
+    : IF PARENS_L expression PARENS_R onTrue=code_block (ELSE onFalse=code_block)? #stmtIfElse
     | FOR PARENS_L WORD IN expression PARENS_R code_block #stmtForIn
     | FOR PARENS_L init=statement? SEMICOLON condition=expression? SEMICOLON accumulate=statement? PARENS_R code_block #stmtForI
     | WHILE PARENS_L expression PARENS_R code_block #stmtWhile
     | DO code_block WHILE PARENS_L expression PARENS_R #stmtDoWhile
     | reference_chain operator_binary EQUALS expression SEMICOLON #stmtMutate
     | reference_chain SEMICOLON #stmtCall
+    | reference_chain EQUALS expression SEMICOLON #stmtSet
 ;
 
 arg_list: PARENS_L expression (COMMA expression)* PARENS_R;

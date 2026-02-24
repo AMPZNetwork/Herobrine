@@ -14,9 +14,16 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
+import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
+import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
+import net.dv8tion.jda.api.events.guild.member.GenericGuildMemberEvent;
+import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
+import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -38,6 +45,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.CharBuffer;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
@@ -57,7 +66,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
     public static final String ERROR_NO_REFERENCE = "No message reference found";
     public static final String ERROR_NO_SELECTION = "No channel was selected";
 
-    public TemplateContext parse(String template) {
+    public TemplateContext parse(String template, GenericEvent context) {
         var charBuffer  = CharBuffer.wrap(template.toCharArray());
         var buffer      = CodePointBuffer.withChars(charBuffer);
         var charStream  = CodePointCharStream.fromBuffer(buffer);
@@ -65,14 +74,15 @@ public class MessageTemplateEngine extends ListenerAdapter {
         var tokenStream = new CommonTokenStream(tokenSource);
         var parser      = new DiscordMessageTemplateParser(tokenStream);
         var body        = SourceBodyVisitor.INSTANCE.visitSource_body(parser.source_body());
+        var constants = findConstants(context);
 
-        return new TemplateContext(body, Map.of());
+        return new TemplateContext(body, Collections.unmodifiableMap(constants));
     }
 
     @Command
     @Description("Evaluate message template scripts")
-    public MessageCreateBuilder evaluate(@Command.Arg String template) {
-        var context = parse(template);
+    public MessageCreateBuilder evaluate(GenericInteractionCreateEvent event, @Command.Arg String template) {
+        var context = parse(template, event);
 
         return context.evaluate().addComponents(createFinalizerActionRow());
     }
@@ -136,7 +146,10 @@ public class MessageTemplateEngine extends ListenerAdapter {
         message.reply(createInitMessage().build()).queue();
     }
 
-    private Optional<TemplateContext> verifyTemplate(Message referenced, IReplyCallback callback) {
+    private <EC extends GenericEvent & IReplyCallback> Optional<TemplateContext> verifyTemplate(
+            Message referenced,
+            EC callback
+    ) {
         if (referenced == null) {
             callback.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
             return Optional.empty();
@@ -148,7 +161,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
             return Optional.empty();
         }
 
-        return txt.map(this::parse);
+        return txt.map(template -> parse(template, callback));
     }
 
     @EventListener
@@ -182,6 +195,19 @@ public class MessageTemplateEngine extends ListenerAdapter {
         }
 
         return Optional.empty();
+    }
+
+    private Map<CharSequence, Object> findConstants(GenericEvent context) {
+        var map = new HashMap<CharSequence, Object>();
+
+        if (context instanceof GenericGuildEvent gge) map.put("guild", gge.getGuild());
+        if (context instanceof GenericGuildMemberEvent ggme) map.put("member", ggme.getMember());
+        if (context instanceof GenericChannelEvent gce) map.put("channel", gce.getChannel());
+        if (context instanceof GenericThreadEvent gte) map.put("thread", gte.getThread());
+        if (context instanceof GenericUserEvent gue) map.put("user", gue.getUser());
+        if (context instanceof MessageReceivedEvent mre) map.put("message", mre.getMessage());
+
+        return map;
     }
 
     private MessageCreateBuilder createInitMessage() {

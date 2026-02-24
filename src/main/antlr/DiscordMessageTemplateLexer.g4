@@ -41,12 +41,11 @@ FINALLY: 'finally';
 RETURN: 'return';
 FUNCTION: 'function';
 
-LITERAL_STRING: DOUBLEQUOTE [^\n] DOUBLEQUOTE;
+LITERAL_STRING: DOUBLEQUOTE ~[\r\n]* DOUBLEQUOTE;
 LITERAL_NUMBER: [0-9]+ (DOT [0-9]+)?;
 LITERAL_BOOLEAN: TRUE | FALSE;
 
-WORD: [a-zA-Z0-9_];
-IDENTIFIER: WORD (DOT WORD)*;
+WORD: [a-zA-Z0-9_]+;
 
 SING_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
 WS: [ \n\r\t] -> channel(HIDDEN);
