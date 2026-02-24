@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'war'
+    id 'antlr'
     id 'org.springframework.boot' version '3.4.5'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.asciidoctor.jvm.convert' version '3.3.2'
@@ -21,16 +22,6 @@ configurations {
         extendsFrom annotationProcessor
     }
 }
-/*
-tasks.named('asciidoctor') {
-    inputs.dir snippetsDir
-    dependsOn test
-}
-
-ext {
-    set('snippetsDir', file("build/generated-snippets"))
-}
- */
 
 java {
     toolchain {
@@ -59,6 +50,9 @@ dependencies {
     // core function
     implementation project(':japi')
     implementation project(':ChatMod:api')
+
+    // antlr
+    antlr "org.antlr:antlr4:4.+"
 
     // minecraft
     implementation 'org.spigotmc:spigot-api:1.20-R0.1-SNAPSHOT'
@@ -107,6 +101,32 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.easymock:easymock:+'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+generateGrammarSource {
+    arguments += ["-long-messages",
+                  "-visitor",
+                  "-package", "com.ampznetwork.herobrine.antlr"]
+
+    doLast {
+        mkdir("$rootDir/build/generated-src/antlr/main/com/ampznetwork/herobrine/antlr/")
+        fileTree("$rootDir/build/generated-src/antlr/main")
+                .matching { include '*.java' }
+                .forEach { f ->
+                    def path = "$rootDir/build/generated-src/antlr/main/com/ampznetwork/herobrine/antlr/${f.name}"
+                    if (file(path).exists())
+                        file(path).delete()
+                    f.renameTo(path)
+                }
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += file("$rootDir/build/generated-src/antlr/main")
+        }
+    }
 }
 
 tasks.named('test') {
