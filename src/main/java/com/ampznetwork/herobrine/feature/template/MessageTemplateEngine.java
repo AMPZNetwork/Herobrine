@@ -66,7 +66,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -106,15 +105,20 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         var body        = SourceBodyVisitor.INSTANCE.visitSource_body(parser.source_body());
         var constants = findConstants(context);
 
-        return new TemplateContext(body, Collections.unmodifiableMap(constants));
+        return new TemplateContext(body, constants);
     }
 
     @Command
     @Description("Evaluate message template scripts")
-    public MessageCreateBuilder evaluate(GenericInteractionCreateEvent event, @Command.Arg String template) {
-        var context = parse(template, event);
-
-        return context.evaluate().addComponents(createFinalizerActionRow());
+    public JdaCommandAdapter.ResponseCallback evaluate(
+            GenericInteractionCreateEvent event, @Command.Arg String template) {
+        return new JdaCommandAdapter.ResponseCallback(
+                "```dmt\n%s\n```".formatted(template),
+                msg -> {
+                    var context = parse(template, event);
+                    return msg.reply(context.evaluate().addComponents(createFinalizerActionRow()).build());
+                }
+        );
     }
 
     @Command(privacy = CommandPrivacyLevel.PUBLIC)
