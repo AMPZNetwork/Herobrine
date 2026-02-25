@@ -5,7 +5,7 @@ import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateParser;
 import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.util.Constant;
-import com.ampznetwork.herobrine.util.ReplyCallbackWrapper;
+import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
@@ -28,7 +28,9 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
 import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.requests.RestAction;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.antlr.v4.runtime.CodePointBuffer;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -49,14 +51,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.CharBuffer;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-
-import static org.comroid.api.Polyfill.*;
 
 @Log
 @Component
@@ -67,6 +69,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
     public static final String INTERACTION_EVALUATE            = "mte_evaluate";
     public static final String INTERACTION_DISMISS             = "mte_dismiss";
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
+    public static final String INTERACTION_RESEND_HERE = "mte_resend_here";
 
     public static final String ERROR_NO_TEMPLATE   = "No message template script found";
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
@@ -105,16 +108,35 @@ public class MessageTemplateEngine extends ListenerAdapter {
             return;
         }
 
+        final var channel = event.getChannel();
         switch (componentId) {
-            case INTERACTION_EVALUATE -> event.deferReply(true).flatMap(hook -> {
+            case INTERACTION_EVALUATE -> {
                 var reference = event.getMessage().getMessageReference();
-                if (reference == null) return uncheckedCast(event.reply(ERROR_NO_REFERENCE).setEphemeral(true));
+                if (reference == null) {
+                    event.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
+                    return;
+                }
 
-                return uncheckedCast(sendPreview(event.getChannel(),
-                        event,
-                        reference,
-                        new ReplyCallbackWrapper.Hook(hook)));
-            }).queue();
+                event.deferReply(true)
+                        .flatMap(hook -> sendPreview(channel, event, reference, new MessageDeliveryTarget.Hook(hook)))
+                        .queue();
+            }
+            case INTERACTION_RESEND_HERE -> {
+                var reference = event.getMessage().getMessageReference();
+                if (reference == null) {
+                    event.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
+                    return;
+                }
+
+                event.deferReply(true)
+                        .flatMap(hook -> topmostMessageByReferences(channel,
+                                reference).flatMap(referenced -> hookSendFinal(event,
+                                channel,
+                                message,
+                                referenced,
+                                hook)))
+                        .queue();
+            }
             case INTERACTION_DISMISS -> event.deferReply(true)
                     .flatMap(hook -> message.delete().flatMap($ -> hook.deleteOriginal()))
                     .queue();
@@ -125,6 +147,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
     public void onEntitySelectInteraction(@NonNull EntitySelectInteractionEvent event) {
         if (!INTERACTION_FINALIZE_IN_CHANNEL.equals(event.getComponentId())) return;
 
+        var channel = event.getChannel();
         var message   = event.getMessage();
         var reference = message.getMessageReference();
         if (reference == null) {
@@ -132,32 +155,20 @@ public class MessageTemplateEngine extends ListenerAdapter {
             return;
         }
 
-        event.deferReply(true)
-                .flatMap(hook -> event.getChannel()
-                        .retrieveMessageById(reference.getMessageId())
-                        .flatMap(referenced -> {
-                            var template = verifyTemplate(referenced, event, new ReplyCallbackWrapper.Direct(event));
-                            if (template.isEmpty()) {
-                                return uncheckedCast(hook.editOriginal(ERROR_NO_TEMPLATE));
-                            }
+        if (event.getValues().isEmpty()) {
+            event.reply(ERROR_NO_SELECTION).queue();
+            return;
+        }
 
-                            if (event.getValues().isEmpty()) {
-                                return uncheckedCast(hook.editOriginal(ERROR_NO_SELECTION));
-                            }
+        event.deferReply(true).flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> {
+            var selected = event.getValues()
+                    .stream()
+                    .flatMap(Streams.cast(MessageChannelUnion.class))
+                    .findAny()
+                    .orElseThrow();
 
-                            var response = template.get().evaluate().build();
-                            RestAction<?> action = event.getValues()
-                                    .stream()
-                                    .flatMap(Streams.cast(MessageChannelUnion.class))
-                                    .findAny()
-                                    .orElseThrow()
-                                    .sendMessage(response);
-
-                            if (!message.isEphemeral()) action = action.flatMap($ -> message.delete());
-
-                            return uncheckedCast(action.flatMap($ -> hook.editOriginal("Success!")));
-                        }))
-                .queue();
+            return hookSendFinal(event, selected, message, referenced, hook);
+        })).queue();
     }
 
     @Override
@@ -179,10 +190,14 @@ public class MessageTemplateEngine extends ListenerAdapter {
         if (!event.getReaction().getEmoji().equals(Constant.EMOJI_EVAL_TEMPLATE)) return;
 
         try {
-            var message = event.retrieveMessage().complete();
-            if (message == null) return;
+            var channel = event.getChannel();
 
-            sendPreview(event.getChannel(), event, ref(message), null).queue();
+            event.retrieveMessage()
+                    .flatMap(message -> sendPreview(channel,
+                            event,
+                            ref(message),
+                            new MessageDeliveryTarget.Reply(message)))
+                    .queue();
         } finally {
             event.getReaction().removeReaction(user).queue();
         }
@@ -197,35 +212,69 @@ public class MessageTemplateEngine extends ListenerAdapter {
         log.info("Initialized");
     }
 
+    private RestAction<?> hookSendFinal(
+            GenericEvent event, MessageChannelUnion channel, Message original,
+            Message referenced, InteractionHook hook
+    ) {
+        RestAction<?> action = sendFinal(channel, referenced, event, new MessageDeliveryTarget.Hook(hook));
+
+        var flag = action instanceof MessageCreateAction;
+        action = action.flatMap($ -> original.delete());
+        if (flag) action = action.flatMap($ -> hook.deleteOriginal());
+
+        return action;
+    }
+
+    private RestAction<Message> topmostMessageByReferences(MessageChannelUnion channel, MessageReference reference) {
+        final var helper = new Object() {
+            RestAction<Message> tryStepInto(Message msg) {
+                var ref = msg.getMessageReference();
+                // todo: "completed" restaction somehow?
+                if (ref == null) return channel.retrieveMessageById(msg.getId());
+                return channel.retrieveMessageById(ref.getMessageId());
+            }
+        };
+
+        // todo lol this is dogshit
+        return channel.retrieveMessageById(reference.getMessageId())
+                .flatMap(helper::tryStepInto)
+                .flatMap(helper::tryStepInto);
+    }
+
+    private RestAction<?> sendFinal(
+            MessageChannelUnion channel, Message referenced, GenericEvent event,
+            MessageDeliveryTarget callback
+    ) {
+        var template = verifyTemplate(referenced, event, callback);
+        if (template.isEmpty()) return callback.send(ERROR_NO_TEMPLATE);
+
+        var response = template.get().evaluate().build();
+        return channel.sendMessage(response);
+    }
+
     private RestAction<?> sendPreview(
             MessageChannelUnion channel, GenericEvent event, MessageReference reference,
-            @Nullable ReplyCallbackWrapper callback
+            MessageDeliveryTarget callback
     ) {
         return channel.retrieveMessageById(reference.getMessageId()).flatMap(referenced -> {
             var template = verifyTemplate(referenced, event, callback);
-            if (template.isEmpty()) {
-                if (callback != null) {
-                    return uncheckedCast(callback.reply(ERROR_NO_TEMPLATE));
-                }
-                return uncheckedCast(channel.sendMessage(ERROR_NO_TEMPLATE));
-            }
+            if (template.isEmpty()) return callback.send(ERROR_NO_TEMPLATE);
 
             var response = template.get().evaluate().addComponents(createFinalizerActionRow()).build();
-            if (callback != null) return uncheckedCast(callback.reply(response));
-            return uncheckedCast(referenced.reply(response));
+            return callback.send(response);
         });
     }
 
     private Optional<TemplateContext> verifyTemplate(
-            Message referenced, GenericEvent event, @Nullable ReplyCallbackWrapper callback) {
+            Message referenced, GenericEvent event, @Nullable MessageDeliveryTarget callback) {
         if (referenced == null) {
-            if (callback != null) callback.reply(ERROR_NO_REFERENCE).queue();
+            if (callback != null) callback.send(ERROR_NO_REFERENCE).queue();
             return Optional.empty();
         }
 
         var txt = findTemplate(referenced);
         if (txt.isEmpty()) {
-            if (callback != null) callback.reply(ERROR_NO_TEMPLATE).queue();
+            if (callback != null) callback.send(ERROR_NO_TEMPLATE).queue();
             return Optional.empty();
         }
 
@@ -288,8 +337,10 @@ public class MessageTemplateEngine extends ListenerAdapter {
                 Button.danger(INTERACTION_DISMISS, "%s Dismiss".formatted(Constant.EMOJI_DELETE)));
     }
 
-    private ActionRow createFinalizerActionRow() {
-        return ActionRow.of(EntitySelectMenu.create(INTERACTION_FINALIZE_IN_CHANNEL,
-                EntitySelectMenu.SelectTarget.CHANNEL).setPlaceholder("Send this into channel...").build());
+    private Collection<ActionRow> createFinalizerActionRow() {
+        return List.of(ActionRow.of(EntitySelectMenu.create(INTERACTION_FINALIZE_IN_CHANNEL,
+                        EntitySelectMenu.SelectTarget.CHANNEL).setPlaceholder("Send this into channel...").build()),
+                ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here"),
+                        Button.danger(INTERACTION_DISMISS, "Dismiss")));
     }
 }

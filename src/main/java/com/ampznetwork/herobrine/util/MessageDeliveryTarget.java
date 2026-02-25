@@ -1,50 +1,67 @@
 package com.ampznetwork.herobrine.util;
 
+import lombok.AllArgsConstructor;
 import lombok.Value;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.WebhookMessageEditAction;
-import net.dv8tion.jda.api.requests.restaction.interactions.ReplyCallbackAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 
-public interface ReplyCallbackWrapper {
-    default RestAction<?> reply(String message) {
-        return reply(new MessageCreateBuilder().setContent(message).build());
+public interface MessageDeliveryTarget {
+    default RestAction<Message> send(String message) {
+        return send(new MessageCreateBuilder().setContent(message).build());
     }
 
-    RestAction<?> reply(MessageCreateData message);
+    RestAction<Message> send(MessageCreateData message);
 
     @Value
-    class Direct implements ReplyCallbackWrapper {
+    class Channel implements MessageDeliveryTarget {
+        MessageChannel channel;
+
+        @Override
+        public RestAction<Message> send(MessageCreateData message) {
+            return channel.sendMessage(message);
+        }
+    }
+
+    @Value
+    class Reply implements MessageDeliveryTarget {
+        Message target;
+
+        @Override
+        public RestAction<Message> send(MessageCreateData message) {
+            return target.reply(message);
+        }
+    }
+
+    @Value
+    @AllArgsConstructor
+    class ReplyCallback implements MessageDeliveryTarget {
         IReplyCallback callback;
         boolean        ephemeral;
 
-        public Direct(IReplyCallback callback) {
+        public ReplyCallback(IReplyCallback callback) {
             this(callback, true);
         }
 
-        public Direct(IReplyCallback callback, boolean ephemeral) {
-            this.callback  = callback;
-            this.ephemeral = ephemeral;
-        }
-
         @Override
-        public ReplyCallbackAction reply(MessageCreateData message) {
-            return callback.reply(message).setEphemeral(ephemeral);
+        public RestAction<Message> send(MessageCreateData message) {
+            return callback.reply(message).setEphemeral(ephemeral).map(hook -> hook.getCallbackResponse().getMessage());
         }
     }
 
     @Value
-    class Hook implements ReplyCallbackWrapper {
+    class Hook implements MessageDeliveryTarget {
         InteractionHook hook;
 
         @Override
-        public WebhookMessageEditAction<Message> reply(MessageCreateData message) {
+        public WebhookMessageEditAction<Message> send(MessageCreateData message) {
             return hook.editOriginal(convertToEditData(message));
         }
 
