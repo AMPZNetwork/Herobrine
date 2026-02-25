@@ -295,6 +295,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
         return Optional.empty();
     }
 
+    @SuppressWarnings("DataFlowIssue")
     private Map<CharSequence, Object> findConstants(Object context) {
         return switch (context) {
             case ComponentInteraction ci -> Map.of(
