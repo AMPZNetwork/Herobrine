@@ -2,20 +2,21 @@ package com.ampznetwork.herobrine.component.template.context;
 
 import com.ampznetwork.herobrine.component.template.model.decl.func.Function;
 import com.ampznetwork.herobrine.component.template.model.expr.Expression;
+import com.ampznetwork.herobrine.component.template.types.TemplateObjectInstance;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Builder.Default;
 import lombok.Singular;
 import lombok.Value;
-import org.comroid.api.func.util.Streams;
+import org.comroid.api.data.bind.DataStructure;
+import org.comroid.api.func.util.Optionals;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Value
 @Builder
@@ -77,17 +78,35 @@ public class Reference implements Expression, CharSequence {
     @Override
     public Object evaluate(TemplateContext context) {
         final var key = toString();
-        var sources = Stream.concat(context.getConstants().entrySet().stream(),
-                        context.getVariables().entrySet().stream())
-                .filter(entry -> entry.getKey().equals(key))
-                .map(Map.Entry::getValue);
 
         if (arguments == null) {
-            return sources.findAny().orElse(null);
+            // call property
+            return context.findVariable(key)
+                    .or(() -> keys.size() == 1
+                              ? Optional.empty()
+                              : context.findVariable(keys.getFirst().key).flatMap(it -> {
+                                  var target = new Object[]{ it };
+
+                                  for (var i = 1; i < keys.size(); i++) {
+                                      var struct = DataStructure.of(target[0].getClass());
+                                      var part   = keys.get(i).key;
+
+                                      target[0] = target[0] instanceof TemplateObjectInstance toi
+                                                  ? toi.get(part)
+                                                  : struct.getProperty(part)
+                                                          .map(p -> p.getFrom(target[0]))
+                                                          .orElse(null);
+
+                                      if (target[0] == null) break;
+                                  }
+
+                                  return Optional.ofNullable(target[0]);
+                              }))
+                    .orElse(null);
         }
 
         context.setArguments(arguments.toArray(Expression[]::new));
-        sources.flatMap(Streams.cast(Function.class)).findAny().ifPresent(func -> func.execute(context));
+        context.findVariable(key).flatMap(Optionals.cast(Function.class)).ifPresent(func -> func.execute(context));
 
         return context.getReturnValue();
     }

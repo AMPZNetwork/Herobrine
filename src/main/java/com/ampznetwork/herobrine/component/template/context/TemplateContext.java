@@ -12,7 +12,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 @Value
 public class TemplateContext {
@@ -46,19 +48,19 @@ public class TemplateContext {
     private MessageCreateBuilder buildMessageData() {
         var message = new MessageCreateBuilder();
 
-        var content = variables.getOrDefault("message.content", null);
+        var content = variables.getOrDefault("response.content", null);
         if (content != null) message.setContent(String.valueOf(content));
 
         var embedData = variables.entrySet()
                 .stream()
-                .filter(e -> e.getKey().toString().startsWith("message.embed"))
+                .filter(e -> e.getKey().toString().startsWith("response.embed"))
                 .toList();
 
         if (!embedData.isEmpty()) {
             var embed = new EmbedBuilder();
 
             for (var entry : embedData) {
-                var key = entry.getKey().toString().substring("message.embed".length() + 1);
+                var key = entry.getKey().toString().substring("response.embed".length() + 1);
 
                 EmbedComponentReference.valueOf(key).accept(embed, entry.getValue());
             }
@@ -67,5 +69,12 @@ public class TemplateContext {
         }
 
         return message;
+    }
+
+    public Optional<Object> findVariable(CharSequence key) {
+        return Stream.concat(constants.entrySet().stream(), variables.entrySet().stream())
+                .filter(entry -> entry.getKey().equals(key))
+                .map(Map.Entry::getValue)
+                .findAny();
     }
 }
