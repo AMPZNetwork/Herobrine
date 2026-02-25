@@ -4,7 +4,7 @@ import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.types.TemplateObjectInstance;
 import com.ampznetwork.herobrine.component.template.types.Type;
 import lombok.Value;
-import org.comroid.api.map.HashKeyMap;
+import org.comroid.api.map.StringKeyMap;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,7 +25,7 @@ public class ConstructorCall implements Expression {
 
     @Override
     public TemplateObjectInstance evaluate(TemplateContext context) {
-        var props = new HashKeyMap<CharSequence, Object>();
+        var props = new StringKeyMap<>();
 
         for (var entry : properties.entrySet()) {
             var value = entry.getValue().evaluate(context);

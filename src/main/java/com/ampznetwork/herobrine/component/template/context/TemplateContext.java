@@ -7,7 +7,7 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
-import org.comroid.api.map.HashKeyMap;
+import org.comroid.api.map.StringKeyMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -28,8 +28,8 @@ public class TemplateContext {
 
     private TemplateContext(CodeBlock body, Map<CharSequence, Object> variables, Map<CharSequence, Object> constants) {
         this.body      = body;
-        this.variables = new HashKeyMap<>(variables);
-        this.constants = Collections.unmodifiableMap(new HashKeyMap<>(constants));
+        this.variables = new StringKeyMap<>(variables);
+        this.constants = Collections.unmodifiableMap(new StringKeyMap<>(constants));
     }
 
     @SuppressWarnings("RedundantUnmodifiable")

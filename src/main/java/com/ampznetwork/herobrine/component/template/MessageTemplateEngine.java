@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageReference;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
@@ -27,12 +28,12 @@ import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
 import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.antlr.v4.runtime.CodePointBuffer;
 import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.comroid.annotations.Description;
-import org.comroid.api.Polyfill;
 import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
@@ -55,6 +56,8 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
+import static org.comroid.api.Polyfill.*;
+
 @Log
 @Component
 @Command("template")
@@ -65,9 +68,10 @@ public class MessageTemplateEngine extends ListenerAdapter {
     public static final String INTERACTION_DISMISS             = "mte_dismiss";
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
 
-    public static final String ERROR_NO_TEMPLATE  = "No message template script found";
-    public static final String ERROR_NO_REFERENCE = "No message reference found";
-    public static final String ERROR_NO_SELECTION = "No channel was selected";
+    public static final String ERROR_NO_TEMPLATE   = "No message template script found";
+    public static final String ERROR_NO_REFERENCE  = "No message reference found";
+    public static final String ERROR_NO_SELECTION  = "No channel was selected";
+    public static final String ERROR_NO_PERMISSION = "Insufficient permissions";
 
     public TemplateContext parse(String template, GenericEvent context) {
         var charBuffer  = CharBuffer.wrap(template.toCharArray());
@@ -96,14 +100,24 @@ public class MessageTemplateEngine extends ListenerAdapter {
         var message     = event.getMessage();
 
         if (!message.getAuthor().equals(event.getUser()) && (event.getMember() == null || !event.getMember()
-                .hasPermission(Permission.MESSAGE_MANAGE))) return;
+                .hasPermission(Permission.MESSAGE_MANAGE))) {
+            event.reply(ERROR_NO_PERMISSION).setEphemeral(true).queue();
+            return;
+        }
 
         switch (componentId) {
-            case INTERACTION_EVALUATE -> event.deferReply(true).map(hook -> {
-                evaluate(event.getChannel(), message, event, new ReplyCallbackWrapper.Hook(hook));
-                return null;
+            case INTERACTION_EVALUATE -> event.deferReply(true).flatMap(hook -> {
+                var reference = event.getMessage().getMessageReference();
+                if (reference == null) return uncheckedCast(event.reply(ERROR_NO_REFERENCE).setEphemeral(true));
+
+                return uncheckedCast(sendPreview(event.getChannel(),
+                        event,
+                        reference,
+                        new ReplyCallbackWrapper.Hook(hook)));
             }).queue();
-            case INTERACTION_DISMISS -> message.delete().queue();
+            case INTERACTION_DISMISS -> event.deferReply(true)
+                    .flatMap(hook -> message.delete().flatMap($ -> hook.deleteOriginal()))
+                    .queue();
         }
     }
 
@@ -111,25 +125,38 @@ public class MessageTemplateEngine extends ListenerAdapter {
     public void onEntitySelectInteraction(@NonNull EntitySelectInteractionEvent event) {
         if (!INTERACTION_FINALIZE_IN_CHANNEL.equals(event.getComponentId())) return;
 
-        var referenced = event.getMessage().getReferencedMessage();
-        var template = verifyTemplate(referenced, event, new ReplyCallbackWrapper.Direct(event));
-        if (template.isEmpty()) {
-            event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
+        var message   = event.getMessage();
+        var reference = message.getMessageReference();
+        if (reference == null) {
+            event.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
             return;
         }
 
-        if (event.getValues().isEmpty()) {
-            event.reply(ERROR_NO_SELECTION).setEphemeral(true).queue();
-            return;
-        }
+        event.deferReply(true)
+                .flatMap(hook -> event.getChannel()
+                        .retrieveMessageById(reference.getMessageId())
+                        .flatMap(referenced -> {
+                            var template = verifyTemplate(referenced, event, new ReplyCallbackWrapper.Direct(event));
+                            if (template.isEmpty()) {
+                                return uncheckedCast(hook.editOriginal(ERROR_NO_TEMPLATE));
+                            }
 
-        var response = template.get().evaluate().build();
-        event.getValues()
-                .stream()
-                .flatMap(Streams.cast(MessageChannelUnion.class))
-                .findAny()
-                .orElseThrow()
-                .sendMessage(response)
+                            if (event.getValues().isEmpty()) {
+                                return uncheckedCast(hook.editOriginal(ERROR_NO_SELECTION));
+                            }
+
+                            var response = template.get().evaluate().build();
+                            RestAction<?> action = event.getValues()
+                                    .stream()
+                                    .flatMap(Streams.cast(MessageChannelUnion.class))
+                                    .findAny()
+                                    .orElseThrow()
+                                    .sendMessage(response);
+
+                            if (!message.isEphemeral()) action = action.flatMap($ -> message.delete());
+
+                            return uncheckedCast(action.flatMap($ -> hook.editOriginal("Success!")));
+                        }))
                 .queue();
     }
 
@@ -153,35 +180,40 @@ public class MessageTemplateEngine extends ListenerAdapter {
 
         try {
             var message = event.retrieveMessage().complete();
-            evaluate(event.getChannel(), message, event, null);
+            if (message == null) return;
+
+            sendPreview(event.getChannel(), event, ref(message), null).queue();
         } finally {
             event.getReaction().removeReaction(user).queue();
         }
     }
 
-    private void evaluate(
-            MessageChannelUnion channel, Message originMessage, GenericEvent event,
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) {
+        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
+        event.getApplicationContext().getBean(CommandManager.class).register(this);
+
+        log.info("Initialized");
+    }
+
+    private RestAction<?> sendPreview(
+            MessageChannelUnion channel, GenericEvent event, MessageReference reference,
             @Nullable ReplyCallbackWrapper callback
     ) {
-        var reference = originMessage.getMessageReference();
-        if (reference == null) {
-            if (callback != null) callback.reply(ERROR_NO_TEMPLATE).queue();
-            return;
-        }
-
-        channel.retrieveMessageById(reference.getMessageId()).flatMap(referenced -> {
+        return channel.retrieveMessageById(reference.getMessageId()).flatMap(referenced -> {
             var template = verifyTemplate(referenced, event, callback);
             if (template.isEmpty()) {
                 if (callback != null) {
-                    return Polyfill.uncheckedCast(callback.reply(ERROR_NO_TEMPLATE));
+                    return uncheckedCast(callback.reply(ERROR_NO_TEMPLATE));
                 }
-                return Polyfill.uncheckedCast(channel.sendMessage(ERROR_NO_TEMPLATE));
+                return uncheckedCast(channel.sendMessage(ERROR_NO_TEMPLATE));
             }
 
             var response = template.get().evaluate().addComponents(createFinalizerActionRow()).build();
-            if (callback != null) return Polyfill.uncheckedCast(callback.reply(response));
-            return Polyfill.uncheckedCast(channel.sendMessage(response));
-        }).queue();
+            if (callback != null) return uncheckedCast(callback.reply(response));
+            return uncheckedCast(referenced.reply(response));
+        });
     }
 
     private Optional<TemplateContext> verifyTemplate(
@@ -200,13 +232,13 @@ public class MessageTemplateEngine extends ListenerAdapter {
         return txt.map(template -> parse(template, event));
     }
 
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
-
-        log.info("Initialized");
+    private MessageReference ref(Message message) {
+        return new MessageReference(MessageReference.MessageReferenceType.DEFAULT.getId(),
+                message.getIdLong(),
+                message.getChannelIdLong(),
+                message.getGuildIdLong(),
+                message,
+                message.getJDA());
     }
 
     private Optional<String> findTemplate(Message message) {
