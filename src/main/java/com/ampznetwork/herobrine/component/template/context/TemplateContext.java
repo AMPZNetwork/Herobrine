@@ -7,11 +7,11 @@ import lombok.Value;
 import lombok.experimental.NonFinal;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import org.comroid.api.map.HashKeyMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 @Value
@@ -23,15 +23,13 @@ public class TemplateContext {
     @NonFinal @Setter @Nullable Object       returnValue = null;
 
     public TemplateContext(CodeBlock body, Map<CharSequence, Object> constants) {
-        this.body      = body;
-        this.variables = new ConcurrentHashMap<>();
-        this.constants = Collections.unmodifiableMap(constants);
+        this(body, Map.of(), constants);
     }
 
     private TemplateContext(CodeBlock body, Map<CharSequence, Object> variables, Map<CharSequence, Object> constants) {
         this.body      = body;
-        this.variables = variables;
-        this.constants = Collections.unmodifiableMap(constants);
+        this.variables = new HashKeyMap<>(variables);
+        this.constants = Collections.unmodifiableMap(new HashKeyMap<>(constants));
     }
 
     @SuppressWarnings("RedundantUnmodifiable")
@@ -61,7 +59,7 @@ public class TemplateContext {
             var embed = new EmbedBuilder();
 
             for (var entry : embedData) {
-                var key = entry.getKey().toString().substring("message.embed".length() + 2);
+                var key = entry.getKey().toString().substring("message.embed".length() + 1);
 
                 EmbedComponentReference.valueOf(key).accept(embed, entry.getValue());
             }

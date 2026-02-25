@@ -1,4 +1,5 @@
 message.content = "Hello World";
+message.embed.title = "Hello World";
 
 if (user) {
     message.embed.author = user;
