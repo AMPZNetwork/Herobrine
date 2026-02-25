@@ -79,7 +79,6 @@ import java.util.regex.Pattern;
 public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSender {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
-    public static final String INTERACTION_DISMISS             = "mte_dismiss";
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
     public static final String INTERACTION_RESEND_HERE = "mte_resend_here";
 
@@ -169,9 +168,6 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
                                         "Could not respond to button interaction")))
                         .queue();
             }
-            case INTERACTION_DISMISS -> event.deferReply(true)
-                    .flatMap(hook -> message.delete().flatMap($ -> hook.deleteOriginal()))
-                    .queue();
         }
     }
 
@@ -406,8 +402,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     private Collection<ActionRow> createFinalizerActionRow() {
         return List.of(ActionRow.of(EntitySelectMenu.create(INTERACTION_FINALIZE_IN_CHANNEL,
                         EntitySelectMenu.SelectTarget.CHANNEL).setPlaceholder("Send this into channel...").build()),
-                ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here"),
-                        Button.danger(INTERACTION_DISMISS, "Dismiss")));
+                ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here")));
     }
 
     @Value
