@@ -2,13 +2,17 @@ package com.ampznetwork.herobrine.component.template;
 
 import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateLexer;
 import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateParser;
+import com.ampznetwork.herobrine.component.template.context.EmbedComponentReference;
 import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.JdaUtil;
 import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 import lombok.extern.java.Log;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
@@ -16,6 +20,9 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageReference;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.UserSnowflake;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
@@ -29,16 +36,22 @@ import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ComponentInteraction;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
+import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.internal.requests.CompletedRestAction;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.antlr.v4.runtime.CodePointBuffer;
 import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
+import org.comroid.api.text.Markdown;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
+import org.comroid.commands.impl.discord.JdaCommandAdapter;
+import org.comroid.commands.model.CommandPrivacyLevel;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jspecify.annotations.NonNull;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -49,11 +62,14 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
@@ -71,6 +87,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
     public static final String ERROR_NO_SELECTION  = "No channel was selected";
     public static final String ERROR_NO_PERMISSION = "Insufficient permissions";
+
+    private final Set<InteractiveMode> interactive = new HashSet<>();
 
     public TemplateContext parse(String template, GenericEvent context) {
         var charBuffer  = CharBuffer.wrap(template.toCharArray());
@@ -93,8 +111,34 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         return context.evaluate().addComponents(createFinalizerActionRow());
     }
 
+    @Command(privacy = CommandPrivacyLevel.PUBLIC)
+    @Description("Start interactive template mode")
+    public JdaCommandAdapter.ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
+        var result = findInteractiveMode(channel, user);
+
+        if (result.isPresent()) {
+            var mode = result.get();
+            return new JdaCommandAdapter.ResponseCallback(new MessageCreateBuilder().addEmbeds(new EmbedBuilder().setDescription(
+                                    "Interactive mode was exited")
+                            .setFooter("The complete template is contained as a file attachment to this message")
+                            .build())
+                    .addFiles(FileUpload.fromData(mode.buffer.toString().getBytes(StandardCharsets.UTF_8),
+                            "message.dmt")), message -> {
+                interactive.removeIf(it -> it.channel.equals(channel) && it.user.equals(user));
+                return message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).map($ -> message);
+            });
+        }
+
+        return new JdaCommandAdapter.ResponseCallback(new EmbedBuilder().setDescription(
+                "Send lines to append code to this template..."), message -> {
+            var mode = new InteractiveMode(channel, user, message);
+            interactive.add(mode);
+            return new CompletedRestAction<>(jda, message);
+        });
+    }
+
     @Override
-    public void onButtonInteraction(@NonNull ButtonInteractionEvent event) {
+    public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
         var componentId = event.getComponentId();
         var message     = event.getMessage();
 
@@ -132,7 +176,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     @Override
-    public void onEntitySelectInteraction(@NonNull EntitySelectInteractionEvent event) {
+    public void onEntitySelectInteraction(@NotNull EntitySelectInteractionEvent event) {
         if (!INTERACTION_FINALIZE_IN_CHANNEL.equals(event.getComponentId())) return;
 
         var channel = event.getChannel();
@@ -165,16 +209,28 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     @Override
-    public void onMessageReceived(@NonNull MessageReceivedEvent event) {
+    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         var message = event.getMessage();
-        var txt     = findTemplate(message);
+
+        var result = findInteractiveMode(event.getChannel(), event.getAuthor());
+        if (result.isPresent()) {
+            var detail = result.get();
+
+            if (!detail.buffer.isEmpty()) detail.buffer.append('\n');
+            detail.buffer.append(message.getContentRaw());
+            message.delete().flatMap($ -> detail.refresh(event)).queue();
+
+            return;
+        }
+
+        var txt = findTemplate(message);
         if (txt.isEmpty()) return;
 
         message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).queue();
     }
 
     @Override
-    public void onMessageReactionAdd(@NonNull MessageReactionAddEvent event) {
+    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
         var user = event.getUser();
 
         if (user == null || user.isBot()) return;
@@ -203,6 +259,10 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         log.info("Initialized");
     }
 
+    private Optional<InteractiveMode> findInteractiveMode(MessageChannel channel, UserSnowflake user) {
+        return interactive.stream().filter(it -> it.channel.equals(channel) && it.user.equals(user)).findAny();
+    }
+
     private RestAction<?> hookSendFinal(
             GenericEvent event, MessageChannelUnion channel, Message original,
             Message referenced, InteractionHook hook
@@ -221,7 +281,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             RestAction<Message> tryStepInto(Message msg) {
                 var ref = msg.getMessageReference();
                 // todo: "completed" restaction somehow?
-                if (ref == null) return channel.retrieveMessageById(msg.getId());
+                if (ref == null) return new CompletedRestAction<>(msg.getJDA(), msg);
                 return channel.retrieveMessageById(ref.getMessageId());
             }
         };
@@ -290,7 +350,10 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     private Optional<String> findTemplate(Message message) {
-        if (message.getAuthor().isBot()) return Optional.empty();
+        if (message.getAuthor().isBot() && message.getAttachments()
+                .stream()
+                .map(Message.Attachment::getFileName)
+                .noneMatch(name -> name.endsWith(".dmt"))) return Optional.empty();
 
         var content = message.getContentRaw();
         var matcher = MD_PATTERN.matcher(content);
@@ -345,5 +408,44 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
                         EntitySelectMenu.SelectTarget.CHANNEL).setPlaceholder("Send this into channel...").build()),
                 ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here"),
                         Button.danger(INTERACTION_DISMISS, "Dismiss")));
+    }
+
+    @Value
+    @EqualsAndHashCode(of = { "channel", "user" })
+    private class InteractiveMode {
+        MessageChannel channel;
+        UserSnowflake  user;
+        Message        infoMessage;
+        StringBuffer   buffer = new StringBuffer();
+
+        public RestAction<Message> refresh(GenericEvent event) {
+            return infoMessage.editMessage(JdaUtil.convertToEditData(parse(buffer.toString(), event).evaluate()
+                    .addEmbeds(infoEmbed().build())
+                    .build()));
+        }
+
+        public EmbedBuilder infoEmbed() {
+            var embed = new EmbedBuilder().setTitle("Interactive template mode")
+                    .setDescription(Markdown.CodeBlock.apply(codeWithLines(buffer.toString())));
+
+            EmbedComponentReference.author.accept(embed, user);
+
+            return embed.setColor(NamedTextColor.LIGHT_PURPLE.value());
+        }
+
+        private String codeWithLines(String string) {
+            var split     = string.split("\r?\n");
+            var lineCount = String.valueOf(split.length).length();
+            var buf       = new StringBuilder();
+
+            for (var i = 0; i < split.length; i++)
+                buf.append(linePrefix(lineCount, i + 1)).append("  ").append(split[i]).append('\n');
+
+            return buf.toString();
+        }
+
+        private String linePrefix(int lineCount, int lineIndex) {
+            return ("%0" + lineCount + "d").formatted(lineIndex);
+        }
     }
 }

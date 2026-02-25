@@ -47,7 +47,7 @@ LITERAL_BOOLEAN: TRUE | FALSE;
 
 WORD: [a-zA-Z0-9_]+;
 
-SING_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
+COMMENT: ('//' | '#') ~[\r\n]* -> channel(HIDDEN);
 WS: [ \n\r\t] -> channel(HIDDEN);
 
 UNMATCHED: . ; //Should make an error
