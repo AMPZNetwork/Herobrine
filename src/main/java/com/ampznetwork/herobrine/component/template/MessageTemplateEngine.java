@@ -5,6 +5,7 @@ import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateParser;
 import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.util.Constant;
+import com.ampznetwork.herobrine.util.ReplyCallbackWrapper;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
@@ -22,18 +23,20 @@ import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
 import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.antlr.v4.runtime.CodePointBuffer;
 import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.comroid.annotations.Description;
+import org.comroid.api.Polyfill;
 import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
+import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
@@ -96,23 +99,10 @@ public class MessageTemplateEngine extends ListenerAdapter {
                 .hasPermission(Permission.MESSAGE_MANAGE))) return;
 
         switch (componentId) {
-            case INTERACTION_EVALUATE -> {
-                var reference = event.getMessage().getMessageReference();
-                if (reference == null) {
-                    event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
-                    return;
-                }
-
-                var referenced = event.getChannel().retrieveMessageById(reference.getMessageId()).complete();
-                var template   = verifyTemplate(referenced, event);
-                if (template.isEmpty()) {
-                    event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
-                    return;
-                }
-
-                var response = template.get().evaluate().addComponents(createFinalizerActionRow()).build();
-                event.reply(response).setEphemeral(true).queue();
-            }
+            case INTERACTION_EVALUATE -> event.deferReply(true).map(hook -> {
+                evaluate(event.getChannel(), message, event, new ReplyCallbackWrapper.Hook(hook));
+                return null;
+            }).queue();
             case INTERACTION_DISMISS -> message.delete().queue();
         }
     }
@@ -122,7 +112,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
         if (!INTERACTION_FINALIZE_IN_CHANNEL.equals(event.getComponentId())) return;
 
         var referenced = event.getMessage().getReferencedMessage();
-        var template   = verifyTemplate(referenced, event);
+        var template = verifyTemplate(referenced, event, new ReplyCallbackWrapper.Direct(event));
         if (template.isEmpty()) {
             event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
             return;
@@ -149,25 +139,65 @@ public class MessageTemplateEngine extends ListenerAdapter {
         var txt     = findTemplate(message);
         if (txt.isEmpty()) return;
 
-        message.reply(createInitMessage().build()).queue();
+        message.reply(createInitMessage().build())
+                .flatMap($ -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE))
+                .queue();
     }
 
-    private <EC extends GenericEvent & IReplyCallback> Optional<TemplateContext> verifyTemplate(
-            Message referenced,
-            EC callback
+    @Override
+    public void onMessageReactionAdd(@NonNull MessageReactionAddEvent event) {
+        var user = event.getUser();
+
+        if (user == null || user.isBot()) return;
+        if (!event.getReaction().getEmoji().equals(Constant.EMOJI_EVAL_TEMPLATE)) return;
+
+        try {
+            var message = event.retrieveMessage().complete();
+            evaluate(event.getChannel(), message, event, null);
+        } finally {
+            event.getReaction().removeReaction(user).queue();
+        }
+    }
+
+    private void evaluate(
+            MessageChannelUnion channel, Message originMessage, GenericEvent event,
+            @Nullable ReplyCallbackWrapper callback
     ) {
+        var reference = originMessage.getMessageReference();
+        if (reference == null) {
+            if (callback != null) callback.reply(ERROR_NO_TEMPLATE).queue();
+            return;
+        }
+
+        channel.retrieveMessageById(reference.getMessageId()).flatMap(referenced -> {
+            var template = verifyTemplate(referenced, event, callback);
+            if (template.isEmpty()) {
+                if (callback != null) {
+                    return Polyfill.uncheckedCast(callback.reply(ERROR_NO_TEMPLATE));
+                }
+                return Polyfill.uncheckedCast(channel.sendMessage(ERROR_NO_TEMPLATE));
+            }
+
+            var response = template.get().evaluate().addComponents(createFinalizerActionRow()).build();
+            if (callback != null) return Polyfill.uncheckedCast(callback.reply(response));
+            return Polyfill.uncheckedCast(channel.sendMessage(response));
+        }).queue();
+    }
+
+    private Optional<TemplateContext> verifyTemplate(
+            Message referenced, GenericEvent event, @Nullable ReplyCallbackWrapper callback) {
         if (referenced == null) {
-            callback.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
+            if (callback != null) callback.reply(ERROR_NO_REFERENCE).queue();
             return Optional.empty();
         }
 
         var txt = findTemplate(referenced);
         if (txt.isEmpty()) {
-            callback.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
+            if (callback != null) callback.reply(ERROR_NO_TEMPLATE).queue();
             return Optional.empty();
         }
 
-        return txt.map(template -> parse(template, callback));
+        return txt.map(template -> parse(template, event));
     }
 
     @EventListener
