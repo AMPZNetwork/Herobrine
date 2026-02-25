@@ -108,7 +108,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         return new TemplateContext(body, constants);
     }
 
-    @Command(privacy = CommandPrivacyLevel.PUBLIC)
+    @Command(permission = "8192", privacy = CommandPrivacyLevel.PUBLIC)
     @Description("Evaluate message template scripts")
     public JdaCommandAdapter.ResponseCallback evaluate(
             GenericInteractionCreateEvent event,
@@ -120,7 +120,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         });
     }
 
-    @Command(privacy = CommandPrivacyLevel.PUBLIC)
+    @Command(permission = "8192", privacy = CommandPrivacyLevel.PUBLIC)
     @Description("Start interactive template mode")
     public JdaCommandAdapter.ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
         var result = findInteractiveMode(channel, user);
