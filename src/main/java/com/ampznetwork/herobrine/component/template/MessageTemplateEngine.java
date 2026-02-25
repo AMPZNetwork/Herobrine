@@ -7,7 +7,6 @@ import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
@@ -67,7 +66,6 @@ import java.util.regex.Pattern;
 public class MessageTemplateEngine extends ListenerAdapter {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
-    public static final String INTERACTION_EVALUATE            = "mte_evaluate";
     public static final String INTERACTION_DISMISS             = "mte_dismiss";
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
     public static final String INTERACTION_RESEND_HERE = "mte_resend_here";
@@ -111,17 +109,6 @@ public class MessageTemplateEngine extends ListenerAdapter {
 
         final var channel = event.getChannel();
         switch (componentId) {
-            case INTERACTION_EVALUATE -> {
-                var reference = event.getMessage().getMessageReference();
-                if (reference == null) {
-                    event.reply(ERROR_NO_REFERENCE).setEphemeral(true).queue();
-                    return;
-                }
-
-                event.deferReply(true)
-                        .flatMap(hook -> sendPreview(channel, event, reference, new MessageDeliveryTarget.Hook(hook)))
-                        .queue();
-            }
             case INTERACTION_RESEND_HERE -> {
                 var reference = event.getMessage().getMessageReference();
                 if (reference == null) {
@@ -178,9 +165,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
         var txt     = findTemplate(message);
         if (txt.isEmpty()) return;
 
-        message.reply(createInitMessage().build())
-                .flatMap($ -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE))
-                .queue();
+        message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).queue();
     }
 
     @Override
@@ -333,16 +318,6 @@ public class MessageTemplateEngine extends ListenerAdapter {
         }
 
         return map;
-    }
-
-    private MessageCreateBuilder createInitMessage() {
-        return new MessageCreateBuilder().setEmbeds(new EmbedBuilder().setTitle(
-                "This message contains a template script").build()).addComponents(createInitActionRow());
-    }
-
-    private ActionRow createInitActionRow() {
-        return ActionRow.of(Button.primary(INTERACTION_EVALUATE, "%s Evaluate".formatted(Constant.EMOJI_EVAL_TEMPLATE)),
-                Button.danger(INTERACTION_DISMISS, "%s Dismiss".formatted(Constant.EMOJI_DELETE)));
     }
 
     private Collection<ActionRow> createFinalizerActionRow() {
