@@ -73,6 +73,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Log
@@ -90,6 +91,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     public static final String ERROR_NO_PERMISSION = "Insufficient permissions";
 
     public static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
+    public static final Pattern SHORTCUT_APPEND_LINE = Pattern.compile("\\+(\\d+) ([^\n]+)");
+    public static final Pattern SHORTCUT_EDIT_LINE   = Pattern.compile("#(\\d+) ([^\n]+)");
 
     private final Set<InteractiveMode> interactive = new HashSet<>();
 
@@ -222,12 +225,30 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             split.removeIf(String::isBlank);
 
             for (var line : split) {
-                var matcher = SHORTCUT_REMOVE_LINE.matcher(line);
-                if (matcher.matches()) {
+                Matcher matcher;
+                var     lines = new ArrayList<>(List.of(detail.buffer.toString().split("\r?\n")));
+
+                if (line.equals("!clear")) {
+                    detail.buffer = new StringBuffer();
+                } else if ((matcher = SHORTCUT_REMOVE_LINE.matcher(line)).matches()) {
                     var lineIndex = Integer.parseInt(matcher.group(1)) - 1;
-                    var lines     = new ArrayList<>(List.of(detail.buffer.toString().split("\r?\n")));
 
                     lines.remove(lineIndex);
+
+                    detail.buffer = new StringBuffer(String.join("\n", lines));
+                } else if ((matcher = SHORTCUT_APPEND_LINE.matcher(line)).matches()) {
+                    var lineIndex = Integer.parseInt(matcher.group(1)) - 1;
+                    var append    = matcher.group(2);
+
+                    var buf = lines.get(lineIndex);
+                    lines.set(lineIndex, buf + append);
+
+                    detail.buffer = new StringBuffer(String.join("\n", lines));
+                } else if ((matcher = SHORTCUT_EDIT_LINE.matcher(line)).matches()) {
+                    var lineIndex   = Integer.parseInt(matcher.group(1)) - 1;
+                    var lineContent = matcher.group(2);
+
+                    lines.set(lineIndex, lineContent);
 
                     detail.buffer = new StringBuffer(String.join("\n", lines));
                 } else detail.buffer.append(line);
@@ -446,7 +467,18 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
         public EmbedBuilder infoEmbed() {
             var embed = new EmbedBuilder().setTitle("Interactive template mode")
-                    .setDescription(Markdown.CodeBlock.apply(codeWithLines(buffer.toString())));
+                    .setDescription(Markdown.CodeBlock.apply(codeWithLines(buffer.toString())))
+                    .addField("Remove line",
+                            "Write `-<line number>` to remove a specific line from the template",
+                            false)
+                    .addField("Append to line",
+                            "Write `+<line number> <script>` to append to a line of the template",
+                            false)
+                    .addField("Modify line", "Write `#<line number> <script>` to modify a line of the template", false)
+                    .addField("Clear template",
+                            "Write `!clear` to clear the entire template (Warning: Cannot be undone!",
+                            false)
+                    .setFooter("Available shorthand commands");
 
             EmbedComponentReference.author.accept(embed, user);
 
