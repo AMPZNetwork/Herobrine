@@ -97,7 +97,13 @@ public class MessageTemplateEngine extends ListenerAdapter {
 
         switch (componentId) {
             case INTERACTION_EVALUATE -> {
-                var referenced = event.getMessage().getReferencedMessage();
+                var reference = event.getMessage().getMessageReference();
+                if (reference == null) {
+                    event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
+                    return;
+                }
+
+                var referenced = event.getChannel().retrieveMessageById(reference.getMessageId()).complete();
                 var template   = verifyTemplate(referenced, event);
                 if (template.isEmpty()) {
                     event.reply(ERROR_NO_TEMPLATE).setEphemeral(true).queue();
