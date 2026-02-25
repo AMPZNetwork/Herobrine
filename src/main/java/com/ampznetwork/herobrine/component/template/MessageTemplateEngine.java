@@ -16,16 +16,12 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageReference;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
-import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
-import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
-import net.dv8tion.jda.api.events.guild.member.GenericGuildMemberEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
-import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.components.ComponentInteraction;
@@ -53,7 +49,6 @@ import java.io.StringWriter;
 import java.nio.CharBuffer;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -301,23 +296,23 @@ public class MessageTemplateEngine extends ListenerAdapter {
     }
 
     private Map<CharSequence, Object> findConstants(Object context) {
-        var map = new HashMap<CharSequence, Object>();
-
-        if (context instanceof GenericGuildEvent gge) map.put("guild", gge.getGuild());
-        if (context instanceof GenericGuildMemberEvent ggme) map.put("member", ggme.getMember());
-        if (context instanceof GenericChannelEvent gce) map.put("channel", gce.getChannel());
-        if (context instanceof GenericThreadEvent gte) map.put("thread", gte.getThread());
-        if (context instanceof GenericUserEvent gue) map.put("user", gue.getUser());
-        if (context instanceof MessageReceivedEvent mre) map.put("message", mre.getMessage());
-        if (context instanceof ComponentInteraction ci) {
-            map.put("guild", ci.getGuild());
-            map.put("member", ci.getMember());
-            map.put("channel", ci.getChannel());
-            map.put("user", ci.getUser());
-            map.put("message", ci.getMessage());
-        }
-
-        return map;
+        return switch (context) {
+            case ComponentInteraction ci -> Map.of(
+                    "guild", ci.getGuild(),
+                    "member", ci.getMember(),
+                    "channel", ci.getChannel(),
+                    "user", ci.getUser(),
+                    "message", ci.getMessage()
+            );
+            case GenericMessageReactionEvent gmre -> Map.of(
+                    "guild", gmre.getGuild(),
+                    "member", gmre.getMember(),
+                    "channel", gmre.getChannel(),
+                    "user", gmre.getUser(),
+                    "message", gmre.retrieveMessage().submit().join()
+            );
+            default -> Map.of();
+        };
     }
 
     private Collection<ActionRow> createFinalizerActionRow() {
