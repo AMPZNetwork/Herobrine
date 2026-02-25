@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.User;
 
 import java.awt.*;
 import java.time.Instant;
@@ -69,6 +70,8 @@ public enum EmbedComponentReference implements BiConsumer<EmbedBuilder, Object> 
         @Override
         public void accept(EmbedBuilder embed, Object it) {
             switch (it) {
+                case Member member -> embed.setAuthor(member.getEffectiveName(), null, member.getEffectiveAvatarUrl());
+                case User user -> embed.setAuthor(user.getGlobalName(), null, user.getAvatarUrl());
                 case TemplateObjectInstance toi -> {
                     toi.validateType(EMBED_AUTHOR);
 
@@ -76,10 +79,7 @@ public enum EmbedComponentReference implements BiConsumer<EmbedBuilder, Object> 
                     String url     = toi.get("url");
                     String iconUrl = toi.get("iconUrl");
 
-                    if (url != null) {
-                        if (iconUrl != null) embed.setAuthor(name, url, iconUrl);
-                        else embed.setAuthor(name, url);
-                    } else embed.setAuthor(name);
+                    embed.setAuthor(name, url, iconUrl);
                 }
                 case CharSequence chars -> embed.setAuthor(chars.toString());
                 default -> throw invalidArgument(it, "author");

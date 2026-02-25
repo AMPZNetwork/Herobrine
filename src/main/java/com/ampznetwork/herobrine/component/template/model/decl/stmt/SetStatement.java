@@ -13,7 +13,7 @@ public class SetStatement implements Statement {
 
     @Override
     public String toSerializedString() {
-        return "set %#s = %#s;".formatted(reference, expression);
+        return "%#s = %#s;".formatted(reference, expression);
     }
 
     @Override

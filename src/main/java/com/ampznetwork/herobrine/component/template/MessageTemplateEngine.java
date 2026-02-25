@@ -29,6 +29,7 @@ import net.dv8tion.jda.api.events.thread.GenericThreadEvent;
 import net.dv8tion.jda.api.events.user.GenericUserEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.components.ComponentInteraction;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -314,7 +315,7 @@ public class MessageTemplateEngine extends ListenerAdapter {
         return Optional.empty();
     }
 
-    private Map<CharSequence, Object> findConstants(GenericEvent context) {
+    private Map<CharSequence, Object> findConstants(Object context) {
         var map = new HashMap<CharSequence, Object>();
 
         if (context instanceof GenericGuildEvent gge) map.put("guild", gge.getGuild());
@@ -323,6 +324,13 @@ public class MessageTemplateEngine extends ListenerAdapter {
         if (context instanceof GenericThreadEvent gte) map.put("thread", gte.getThread());
         if (context instanceof GenericUserEvent gue) map.put("user", gue.getUser());
         if (context instanceof MessageReceivedEvent mre) map.put("message", mre.getMessage());
+        if (context instanceof ComponentInteraction ci) {
+            map.put("guild", ci.getGuild());
+            map.put("member", ci.getMember());
+            map.put("channel", ci.getChannel());
+            map.put("user", ci.getUser());
+            map.put("message", ci.getMessage());
+        }
 
         return map;
     }

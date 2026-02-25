@@ -23,18 +23,17 @@ public class TemplateContext {
     @NonFinal @Setter @Nullable Object       returnValue = null;
 
     public TemplateContext(CodeBlock body, Map<CharSequence, Object> constants) {
-        this(body, Map.of(), constants);
+        this(body, constants, Map.of());
     }
 
-    private TemplateContext(CodeBlock body, Map<CharSequence, Object> variables, Map<CharSequence, Object> constants) {
+    private TemplateContext(CodeBlock body, Map<CharSequence, Object> constants, Map<CharSequence, Object> variables) {
         this.body      = body;
         this.variables = new StringKeyMap<>(variables);
         this.constants = Collections.unmodifiableMap(new StringKeyMap<>(constants));
     }
 
-    @SuppressWarnings("RedundantUnmodifiable")
     public void innerContext(Consumer<TemplateContext> action) {
-        var inner = new TemplateContext(null, Collections.unmodifiableMap(constants), Map.copyOf(variables));
+        var inner = this;//new TemplateContext(null, constants, variables);
         action.accept(inner);
     }
 
