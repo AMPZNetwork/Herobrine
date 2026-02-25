@@ -108,17 +108,16 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         return new TemplateContext(body, constants);
     }
 
-    @Command
+    @Command(privacy = CommandPrivacyLevel.PUBLIC)
     @Description("Evaluate message template scripts")
     public JdaCommandAdapter.ResponseCallback evaluate(
-            GenericInteractionCreateEvent event, @Command.Arg String template) {
-        return new JdaCommandAdapter.ResponseCallback(
-                "```dmt\n%s\n```".formatted(template),
-                msg -> {
-                    var context = parse(template, event);
-                    return msg.reply(context.evaluate().addComponents(createFinalizerActionRow()).build());
-                }
-        );
+            GenericInteractionCreateEvent event,
+            @Command.Arg String template
+    ) {
+        return new JdaCommandAdapter.ResponseCallback("```dmt\n%s\n```".formatted(template), msg -> {
+            var context = parse(template, event);
+            return msg.reply(context.evaluate().addComponents(createFinalizerActionRow()).build());
+        });
     }
 
     @Command(privacy = CommandPrivacyLevel.PUBLIC)
