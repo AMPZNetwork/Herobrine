@@ -11,6 +11,7 @@ import com.ampznetwork.herobrine.util.JdaUtil;
 import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
+import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
@@ -63,6 +64,7 @@ import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.nio.CharBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -86,6 +88,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
     public static final String ERROR_NO_SELECTION  = "No channel was selected";
     public static final String ERROR_NO_PERMISSION = "Insufficient permissions";
+
+    public static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
 
     private final Set<InteractiveMode> interactive = new HashSet<>();
 
@@ -213,7 +217,21 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             var detail = result.get();
 
             if (!detail.buffer.isEmpty()) detail.buffer.append('\n');
-            detail.buffer.append(message.getContentRaw());
+
+            var split = new ArrayList<>(List.of(message.getContentRaw().split("\r?\n")));
+            split.removeIf(String::isBlank);
+
+            for (var line : split) {
+                var matcher = SHORTCUT_REMOVE_LINE.matcher(line);
+                if (matcher.matches()) {
+                    var lineIndex = Integer.parseInt(matcher.group(1)) - 1;
+                    var lines     = new ArrayList<>(List.of(detail.buffer.toString().split("\r?\n")));
+
+                    lines.remove(lineIndex);
+
+                    detail.buffer = new StringBuffer(String.join("\n", lines));
+                } else detail.buffer.append(line);
+            }
             message.delete().flatMap($ -> detail.refresh(event)).queue();
 
             return;
@@ -411,7 +429,14 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         MessageChannel channel;
         UserSnowflake  user;
         Message        infoMessage;
-        StringBuffer   buffer = new StringBuffer();
+        @NonFinal StringBuffer buffer;
+
+        public InteractiveMode(MessageChannel channel, UserSnowflake user, Message infoMessage) {
+            this.channel     = channel;
+            this.user        = user;
+            this.infoMessage = infoMessage;
+            this.buffer      = new StringBuffer();
+        }
 
         public RestAction<Message> refresh(GenericEvent event) {
             return infoMessage.editMessage(JdaUtil.convertToEditData(parse(buffer.toString(), event).evaluate()
