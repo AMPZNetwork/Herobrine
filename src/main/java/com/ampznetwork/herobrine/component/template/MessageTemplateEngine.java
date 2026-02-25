@@ -4,6 +4,7 @@ import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateLexer;
 import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateParser;
 import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
+import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
 import lombok.extern.java.Log;
@@ -58,7 +59,7 @@ import java.util.regex.Pattern;
 @Log
 @Component
 @Command("template")
-public class MessageTemplateEngine extends ListenerAdapter {
+public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSender {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
     public static final String INTERACTION_DISMISS             = "mte_dismiss";
@@ -230,6 +231,14 @@ public class MessageTemplateEngine extends ListenerAdapter {
         if (template.isEmpty()) return callback.send(ERROR_NO_TEMPLATE);
 
         var response = template.get().evaluate().build();
+
+        newAuditEntry().level(Level.INFO)
+                .guild(channel.asGuildMessageChannel().getGuild())
+                .message("%s is evaluating template from %s in channel %s".formatted(referenced.getAuthor(),
+                        referenced,
+                        channel))
+                .queue();
+
         return channel.sendMessage(response);
     }
 
@@ -298,20 +307,26 @@ public class MessageTemplateEngine extends ListenerAdapter {
     @SuppressWarnings("DataFlowIssue")
     private Map<CharSequence, Object> findConstants(Object context) {
         return switch (context) {
-            case ComponentInteraction ci -> Map.of(
-                    "guild", ci.getGuild(),
-                    "member", ci.getMember(),
-                    "channel", ci.getChannel(),
-                    "user", ci.getUser(),
-                    "message", ci.getMessage()
-            );
-            case GenericMessageReactionEvent gmre -> Map.of(
-                    "guild", gmre.getGuild(),
-                    "member", gmre.getMember(),
-                    "channel", gmre.getChannel(),
-                    "user", gmre.getUser(),
-                    "message", gmre.retrieveMessage().submit().join()
-            );
+            case ComponentInteraction ci -> Map.of("guild",
+                    ci.getGuild(),
+                    "member",
+                    ci.getMember(),
+                    "channel",
+                    ci.getChannel(),
+                    "user",
+                    ci.getUser(),
+                    "message",
+                    ci.getMessage());
+            case GenericMessageReactionEvent gmre -> Map.of("guild",
+                    gmre.getGuild(),
+                    "member",
+                    gmre.getMember(),
+                    "channel",
+                    gmre.getChannel(),
+                    "user",
+                    gmre.getUser(),
+                    "message",
+                    gmre.retrieveMessage().submit().join());
             default -> Map.of();
         };
     }

@@ -12,4 +12,8 @@ public interface AuditLogSender {
     default AuditLogService audit() {
         return bean(AuditLogService.class);
     }
+
+    default AuditLogService.EntryAPI newAuditEntry() {
+        return audit().newEntry().source(this);
+    }
 }
