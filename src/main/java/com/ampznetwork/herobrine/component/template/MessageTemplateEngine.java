@@ -6,6 +6,7 @@ import com.ampznetwork.herobrine.component.template.context.TemplateContext;
 import com.ampznetwork.herobrine.component.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.util.Constant;
+import com.ampznetwork.herobrine.util.JdaUtil;
 import com.ampznetwork.herobrine.util.MessageDeliveryTarget;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
@@ -115,10 +116,13 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
                 event.deferReply(true)
                         .flatMap(hook -> topmostMessageByReferences(channel,
                                 reference).flatMap(referenced -> hookSendFinal(event,
-                                channel,
-                                message,
-                                referenced,
-                                hook)))
+                                        channel,
+                                        message,
+                                        referenced,
+                                        hook))
+                                .onErrorFlatMap(JdaUtil.exceptionLogger(log,
+                                        hook,
+                                        "Could not respond to button interaction")))
                         .queue();
             }
             case INTERACTION_DISMISS -> event.deferReply(true)
@@ -144,15 +148,20 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             return;
         }
 
-        event.deferReply(true).flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> {
-            var selected = event.getValues()
-                    .stream()
-                    .flatMap(Streams.cast(MessageChannelUnion.class))
-                    .findAny()
-                    .orElseThrow();
+        event.deferReply(true)
+                .flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> {
+                            var selected = event.getValues()
+                                    .stream()
+                                    .flatMap(Streams.cast(MessageChannelUnion.class))
+                                    .findAny()
+                                    .orElseThrow();
 
-            return hookSendFinal(event, selected, message, referenced, hook);
-        })).queue();
+                            return hookSendFinal(event, selected, message, referenced, hook);
+                        })
+                        .onErrorFlatMap(JdaUtil.exceptionLogger(log,
+                                hook,
+                                "Could not respond to entity selection interaction")))
+                .queue();
     }
 
     @Override
