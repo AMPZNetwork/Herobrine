@@ -79,7 +79,10 @@ import java.util.regex.Pattern;
 @Component
 @Command("template")
 public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSender {
-    private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
+    private static final Pattern MD_PATTERN           = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
+    private static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
+    private static final Pattern SHORTCUT_APPEND_LINE = Pattern.compile("\\+(\\d+) ([^\n]+)");
+    private static final Pattern SHORTCUT_EDIT_LINE   = Pattern.compile("#(\\d+) ([^\n]+)");
 
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
     public static final String INTERACTION_RESEND_HERE = "mte_resend_here";
@@ -88,10 +91,6 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
     public static final String ERROR_NO_SELECTION  = "No channel was selected";
     public static final String ERROR_NO_PERMISSION = "Insufficient permissions";
-
-    public static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
-    public static final Pattern SHORTCUT_APPEND_LINE = Pattern.compile("\\+(\\d+) ([^\n]+)");
-    public static final Pattern SHORTCUT_EDIT_LINE   = Pattern.compile("#(\\d+) ([^\n]+)");
 
     private final Set<InteractiveMode> interactive = new HashSet<>();
 
