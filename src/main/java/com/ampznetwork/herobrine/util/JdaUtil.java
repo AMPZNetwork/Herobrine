@@ -1,5 +1,7 @@
 package com.ampznetwork.herobrine.util;
 
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -7,6 +9,8 @@ import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.comroid.api.Polyfill;
 import org.comroid.api.java.StackTraceUtils;
+import org.comroid.api.text.Markdown;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -42,5 +46,19 @@ public class JdaUtil {
         if (!message.getAttachments().isEmpty()) edit = edit.setAttachments(message.getAttachments());
 
         return edit.build();
+    }
+
+    public static MessageEmbed logEntryEmbed(
+            Level level, String sourceName, CharSequence message,
+            @Nullable Throwable t
+    ) {
+        var embed = new EmbedBuilder().setTitle(sourceName).setDescription(message).setFooter(level.getName());
+
+        if (t != null) {
+            var str = StackTraceUtils.toString(t);
+            embed.addField("Attached Exception", Markdown.CodeBlock.apply(str), false);
+        }
+
+        return embed.build();
     }
 }
