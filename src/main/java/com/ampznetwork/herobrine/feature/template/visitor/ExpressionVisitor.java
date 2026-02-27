@@ -8,6 +8,7 @@ import com.ampznetwork.herobrine.feature.template.model.expr.Expression;
 import com.ampznetwork.herobrine.feature.template.model.expr.ParenthesesExpression;
 import com.ampznetwork.herobrine.feature.template.model.expr.TernaryExpression;
 import com.ampznetwork.herobrine.feature.template.model.expr.lit.LiteralBoolean;
+import com.ampznetwork.herobrine.feature.template.model.expr.lit.LiteralNull;
 import com.ampznetwork.herobrine.feature.template.model.expr.lit.LiteralNumber;
 import com.ampznetwork.herobrine.feature.template.model.expr.lit.LiteralString;
 import com.ampznetwork.herobrine.feature.template.model.expr.op.BinaryOperator;
@@ -20,6 +21,11 @@ import java.util.stream.Collectors;
 @Value
 public class ExpressionVisitor extends DiscordMessageTemplateParserBaseVisitor<Expression> {
     public static final ExpressionVisitor INSTANCE = new ExpressionVisitor();
+
+    @Override
+    public LiteralNull visitExprNull(DiscordMessageTemplateParser.ExprNullContext ctx) {
+        return new LiteralNull();
+    }
 
     @Override
     public LiteralBoolean visitExprBoolean(DiscordMessageTemplateParser.ExprBooleanContext ctx) {

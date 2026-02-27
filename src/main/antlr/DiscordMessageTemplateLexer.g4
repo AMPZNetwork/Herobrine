@@ -28,6 +28,7 @@ PERCENT: '%';
 
 TRUE: 'true' | 'yes' | 'on';
 FALSE: 'false' | 'no' | 'off';
+NULL: 'null';
 NEW: 'new';
 IF: 'if';
 ELSE: 'else';

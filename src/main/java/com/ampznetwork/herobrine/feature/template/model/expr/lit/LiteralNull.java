@@ -5,20 +5,14 @@ import com.ampznetwork.herobrine.feature.template.model.expr.Expression;
 import lombok.Value;
 
 @Value
-public class LiteralString implements Expression {
-    String value;
-
-    public LiteralString(String value) {
-        this.value = value.replaceAll("\r\n", "\\\\n");
-    }
-
+public class LiteralNull implements Expression {
     @Override
     public String toSerializedString() {
-        return "\"%s\"".formatted(value);
+        return "null";
     }
 
     @Override
     public Object evaluate(TemplateContext context) {
-        return value;
+        return null;
     }
 }

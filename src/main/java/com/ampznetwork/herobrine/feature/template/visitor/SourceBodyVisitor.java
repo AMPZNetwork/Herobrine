@@ -12,6 +12,7 @@ import com.ampznetwork.herobrine.feature.template.model.decl.stmt.DoWhileStateme
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.ForEachStatement;
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.ForVarStatement;
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.IfElseStatement;
+import com.ampznetwork.herobrine.feature.template.model.decl.stmt.ModifyStatement;
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.MutateStatement;
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.SetStatement;
 import com.ampznetwork.herobrine.feature.template.model.decl.stmt.WhileStatement;
@@ -21,12 +22,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 @Value
 public class SourceBodyVisitor extends DiscordMessageTemplateParserBaseVisitor<Declaration> {
     public static final SourceBodyVisitor INSTANCE = new SourceBodyVisitor();
-
-    @Override
-    public SetStatement visitStmtSet(DiscordMessageTemplateParser.StmtSetContext ctx) {
-        return new SetStatement(ReferenceVisitor.parse(ctx.reference_chain()),
-                ExpressionVisitor.INSTANCE.visit(ctx.expression()));
-    }
 
     @Override
     public IfElseStatement visitStmtIfElse(DiscordMessageTemplateParser.StmtIfElseContext ctx) {
@@ -70,6 +65,19 @@ public class SourceBodyVisitor extends DiscordMessageTemplateParserBaseVisitor<D
     @Override
     public CallStatement visitStmtCall(DiscordMessageTemplateParser.StmtCallContext ctx) {
         return new CallStatement(ReferenceVisitor.parse(ctx.reference_chain()));
+    }
+
+    @Override
+    public SetStatement visitStmtSet(DiscordMessageTemplateParser.StmtSetContext ctx) {
+        return new SetStatement(ReferenceVisitor.parse(ctx.reference_chain()),
+                ExpressionVisitor.INSTANCE.visit(ctx.expression()));
+    }
+
+    @Override
+    public ModifyStatement visitStmtModify(DiscordMessageTemplateParser.StmtModifyContext ctx) {
+        return new ModifyStatement(ReferenceVisitor.parse(ctx.reference_chain()),
+                OperatorVisitor.INSTANCE.visit(ctx.operator_binary()),
+                ExpressionVisitor.INSTANCE.visit(ctx.expression()));
     }
 
     @Override

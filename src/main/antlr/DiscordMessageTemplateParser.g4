@@ -31,7 +31,8 @@ property_list: property_initializer (COMMA property_initializer)*;
 initializer: ACCOLADE_L property_list? ACCOLADE_R;
 
 expression
-    : LITERAL_STRING #exprString
+    : NULL #exprNull
+    | LITERAL_STRING #exprString
     | LITERAL_NUMBER #exprNumber
     | LITERAL_BOOLEAN #exprBoolean
     | PARENS_L expression PARENS_R #exprParentheses
@@ -51,6 +52,7 @@ statement
     | reference_chain operator_binary EQUALS expression SEMICOLON #stmtMutate
     | reference_chain SEMICOLON #stmtCall
     | reference_chain EQUALS expression SEMICOLON #stmtSet
+    | reference_chain operator_binary EQUALS expression SEMICOLON #stmtModify
 ;
 
 arg_list: PARENS_L expression (COMMA expression)* PARENS_R;

@@ -14,16 +14,37 @@ import org.comroid.api.func.util.Optionals;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Value
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Reference implements Expression, CharSequence {
+    public static Builder parse(String key) {
+        var builder = builder();
+
+        for (var part : key.split("\\.")) {
+            var nullable = part.endsWith("?");
+            if (nullable) part = part.substring(0, part.length() - 1);
+            builder.key(new Part(part, nullable));
+        }
+
+        return builder;
+    }
+
     @Singular          List<Part>       keys;
     @Default @Nullable List<Expression> arguments = null;
+
+    public Builder sub(String key) {
+        return sub(key, false);
+    }
+
+    public Builder sub(String key, boolean nullable) {
+        return toBuilder().key(new Part(key, nullable));
+    }
 
     @Override
     public String toSerializedString() {
@@ -79,7 +100,9 @@ public class Reference implements Expression, CharSequence {
     public Object evaluate(TemplateContext context) {
         final var key = toString();
 
-        if (arguments == null) {
+        if (key.matches("response\\.embed\\.fields?"))
+            return context.getVariables().computeIfAbsent("response.embed.fields", $ -> new ArrayList<>());
+        else if (arguments == null) {
             // call property
             return context.findVariable(key)
                     .or(() -> keys.size() == 1
