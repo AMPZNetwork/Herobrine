@@ -2,6 +2,10 @@ package com.ampznetwork.herobrine.util;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.events.GenericEvent;
+import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
+import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
+import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -10,6 +14,7 @@ import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.comroid.api.Polyfill;
 import org.comroid.api.java.StackTraceUtils;
 import org.comroid.api.text.Markdown;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -60,5 +65,17 @@ public class JdaUtil {
         }
 
         return embed.build();
+    }
+
+    public static <GE extends GenericEvent> @NotNull Function<@NotNull GE, @Nullable GE> eventGuildFilter(
+            final long guildId
+    ) {
+        return event -> {
+            if (event instanceof GenericGuildEvent gge && gge.getGuild().getIdLong() == guildId) return event;
+            if (event instanceof GenericChannelEvent gce && gce.getGuild().getIdLong() == guildId) return event;
+            if (event instanceof GenericMessageEvent gme && gme.getGuild().getIdLong() == guildId) return event;
+
+            return null;
+        };
     }
 }
