@@ -38,6 +38,7 @@ public class PersonalityTraitService extends ListenerAdapter {
     @Autowired Event.Bus<GenericEvent> jdaEventBus;
 
     @Command(permission = "8")
+    @Description("Reload listeners for all personality traits")
     public void reload() {
         listeners.forEach(Container.Base::close);
         listeners = Streams.of(personalities.findAll())
