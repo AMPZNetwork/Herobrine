@@ -8,13 +8,13 @@ import java.util.Random;
 @Data
 @Embeddable
 public class RandomDetail {
-    int chance, in;
+    int chance, limes;
 
     public boolean check() {
         return check(new Random());
     }
 
     public boolean check(Random rng) {
-        return rng.nextInt(in) < chance;
+        return rng.nextInt(limes) < chance;
     }
 }
