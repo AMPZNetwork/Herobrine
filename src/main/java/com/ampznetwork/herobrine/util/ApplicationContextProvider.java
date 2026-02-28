@@ -3,7 +3,6 @@ package com.ampznetwork.herobrine.util;
 import lombok.extern.java.Log;
 import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Context;
-import org.comroid.api.func.ext.Wrap;
 import org.comroid.api.java.StackTraceUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,10 +22,11 @@ import java.util.stream.Stream;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApplicationContextProvider implements ApplicationContextAware, Context {
-    private static ApplicationContext applicationContext;
+    private static ApplicationContextProvider instance;
+    private static ApplicationContext         applicationContext;
 
-    public static Wrap<ApplicationContext> get() {
-        return () -> applicationContext;
+    public static ApplicationContextProvider get() {
+        return instance;
     }
 
     public static <T, R extends T> R bean(Class<T> type) {
@@ -35,12 +35,13 @@ public class ApplicationContextProvider implements ApplicationContextAware, Cont
 
     public static <T, R extends T> R bean(Class<? super T> type, @Nullable String name) {
         try {
-            var context = get().assertion("Context not set");
-            return Polyfill.uncheckedCast(name == null ? context.getBean(type) : context.getBean(name, type));
+            var context = instance;
+            return Polyfill.uncheckedCast(name == null
+                                          ? applicationContext.getBean(type)
+                                          : applicationContext.getBean(name, type));
         } catch (NoUniqueBeanDefinitionException nubde) {
             throw new RuntimeException("More than one bean definition found for Bean '%s' of type %s".formatted(name,
-                    StackTraceUtils.lessSimpleName(type)),
-                    nubde);
+                    StackTraceUtils.lessSimpleName(type)), nubde);
         } catch (NoSuchBeanDefinitionException nsbde) {
             throw new RuntimeException("No bean definition found for Bean of type " + StackTraceUtils.lessSimpleName(
                     type), nsbde);
@@ -54,8 +55,8 @@ public class ApplicationContextProvider implements ApplicationContextAware, Cont
     public static <T, R extends T> Optional<R> wrap(Class<T> type, @Nullable String name) {
         try {
             return Polyfill.uncheckedCast(name == null
-                                          ? get().wrap().map(x -> x.getBean(type))
-                                          : get().wrap().map(x -> x.getBean(name, type)));
+                                          ? applicationContext.getBean(type)
+                                          : applicationContext.getBean(name, type));
         } catch (Throwable t) {
             log.log(Level.WARNING,
                     "Bean '%s' of type %s could not be obtained; %s".formatted(name,
@@ -63,6 +64,10 @@ public class ApplicationContextProvider implements ApplicationContextAware, Cont
                             t.getMessage()));
             return Optional.empty();
         }
+    }
+
+    {
+        instance = this;
     }
 
     @Override
