@@ -98,7 +98,7 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
         var editor = findTraitEditor(guild, event.getMember()).orElse(null);
 
         if (editor == null) {
-            event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_WARNING + "This editor has expired")
+            event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_WARNING.getFormatted() + " This editor has expired")
                             .setColor(Constant.COLOR_ERROR)
                             .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(5))
                             .build())
@@ -134,14 +134,15 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
                         .message("%s modified personality trait %s".formatted(event.getMember(), trait))
                         .queue();
 
-                event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS + "Personality Trait was successfully edited")
+                event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Personality Trait was successfully edited")
                                 .setColor(Constant.COLOR_SUCCESS)
                                 .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(3))
                                 .build())
                         .setEphemeral(true)
-                        .flatMap(hook -> event.getMessage().delete().map($ -> hook))
+                        .map(hook -> hook.getCallbackResponse().getMessage())
+                        .flatMap(response -> event.getMessage().delete().map($ -> response))
                         .delay(3, TimeUnit.SECONDS)
-                        .flatMap(InteractionHook::deleteOriginal)
+                        .flatMap(Message::delete)
                         .queue();
             }
         }
@@ -203,14 +204,15 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
             }
         }
 
-        event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS + "")
+        event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Success")
                         .setColor(Constant.COLOR_SUCCESS)
                         .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(2))
                         .build())
                 .setEphemeral(true)
-                .flatMap(hook -> editor.refreshInfoMessage().map($ -> hook))
+                .map(hook -> hook.getCallbackResponse().getMessage())
+                .flatMap(response -> editor.refreshInfoMessage().map($ -> response))
                 .delay(2, TimeUnit.SECONDS)
-                .flatMap(InteractionHook::deleteOriginal)
+                .flatMap(Message::delete)
                 .queue();
     }
 

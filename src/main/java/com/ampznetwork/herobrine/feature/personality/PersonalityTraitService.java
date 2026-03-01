@@ -3,9 +3,11 @@ package com.ampznetwork.herobrine.feature.personality;
 import com.ampznetwork.herobrine.feature.personality.model.PersonalityTrait;
 import com.ampznetwork.herobrine.feature.template.MessageTemplateEngine;
 import com.ampznetwork.herobrine.repo.PersonalityTraitRepo;
+import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
@@ -13,6 +15,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
@@ -32,6 +35,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Log
 @Service
@@ -47,19 +51,29 @@ public class PersonalityTraitService extends ListenerAdapter {
 
     @Command(permission = "8")
     @Description("Reload listeners for all personality traits")
-    public void reload() {
+    public void reload(@Nullable IReplyCallback callback) {
         listeners.forEach(Container.Base::close);
         listeners = Streams.of(traitRepo.findAll())
-                .filter(trait -> trait.getRandomDetail().check())
                 .map(trait -> trait.getDiscordTrigger()
                         .apply(jdaEventBus)
                         .mapData(JdaUtil.eventGuildFilter(trait.getGuildId()))
+                        .filter($ -> trait.getRandomDetail().check())
                         .filterData(event -> {
                             var message = JdaUtil.getMessage(event);
                             return message != null && trait.getContentFilter().matches(message.getContentDisplay());
                         })
                         .subscribeData(event -> handle(trait, event)))
                 .toList();
+
+        if (callback != null) callback.replyEmbeds(new EmbedBuilder().setTitle(
+                                "%s %d Personality listeners have been reloaded".formatted(Constant.EMOJI_SUCCESS, listeners.size()))
+                        .setColor(Constant.COLOR_SUCCESS)
+                        .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(5))
+                        .build())
+                .setEphemeral(true)
+                .delay(5, TimeUnit.SECONDS)
+                .flatMap(InteractionHook::deleteOriginal)
+                .queue();
     }
 
     @Command(permission = "16")
@@ -97,7 +111,7 @@ public class PersonalityTraitService extends ListenerAdapter {
         event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
-        reload();
+        reload(null);
 
         log.info("Initialized");
     }

@@ -72,12 +72,11 @@ public class JdaUtil {
     public static <GE extends GenericEvent> @NotNull Function<@NotNull GE, @Nullable GE> eventGuildFilter(
             final long guildId
     ) {
-        return event -> {
-            if (event instanceof GenericGuildEvent gge && gge.getGuild().getIdLong() == guildId) return event;
-            if (event instanceof GenericChannelEvent gce && gce.getGuild().getIdLong() == guildId) return event;
-            if (event instanceof GenericMessageEvent gme && gme.getGuild().getIdLong() == guildId) return event;
-
-            return null;
+        return event -> switch (event) {
+            case GenericGuildEvent gge when gge.getGuild().getIdLong() == guildId -> event;
+            case GenericChannelEvent gce when gce.getGuild().getIdLong() == guildId -> event;
+            case GenericMessageEvent gme when gme.getGuild().getIdLong() == guildId -> event;
+            default -> null;
         };
     }
 
