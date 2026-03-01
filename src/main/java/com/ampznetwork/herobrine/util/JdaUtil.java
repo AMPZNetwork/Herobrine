@@ -1,11 +1,13 @@
 package com.ampznetwork.herobrine.util;
 
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -77,5 +79,9 @@ public class JdaUtil {
 
             return null;
         };
+    }
+
+    public static @Nullable Message getMessage(GenericMessageEvent event) {
+        return event instanceof MessageReceivedEvent mre ? mre.getMessage() : null;
     }
 }

@@ -2,6 +2,7 @@ package com.ampznetwork.herobrine.trigger;
 
 import jakarta.persistence.AttributeConverter;
 import lombok.Value;
+import net.dv8tion.jda.api.components.selections.SelectOption;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -34,12 +35,19 @@ public class DiscordTrigger<T extends GenericEvent> implements Function<Event.Bu
                 .orElse(null);
     }
 
-    Class<T> eventType;
+    Class<T>     eventType;
+    SelectOption option;
 
     public DiscordTrigger(Class<T> eventType) {
         this.eventType = eventType;
+        this.option = SelectOption.of(eventType.getSimpleName(), eventType.getSimpleName());
 
         values.put(eventType.getSimpleName(), this);
+    }
+
+    @Override
+    public String toString() {
+        return eventType.getSimpleName();
     }
 
     @Override
