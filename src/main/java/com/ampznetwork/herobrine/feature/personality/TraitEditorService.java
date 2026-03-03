@@ -36,6 +36,7 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.comroid.api.Polyfill;
 import org.comroid.commands.impl.CommandManager;
+import org.comroid.commands.impl.discord.JdaCommandAdapter;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -78,6 +79,7 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
     final Collection<TraitEditor> editors = new ArrayList<>();
 
     @Autowired PersonalityTraitRepo personalities;
+    @Autowired JdaCommandAdapter jdaCommandAdapter;
 
     Optional<TraitEditor> findTraitEditor(Guild guild, UserSnowflake user) {
         return editors.stream().filter(creator -> creator.guild.equals(guild) && creator.user.equals(user)).findAny();
@@ -135,6 +137,8 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
                         .queue();
 
                 event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Personality Trait was successfully edited")
+                                .setDescription("You will need to reload listeners using %s".formatted(jdaCommandAdapter.getNamedCommands()
+                                        .getOrDefault("personality reload", null)))
                                 .setColor(Constant.COLOR_SUCCESS)
                                 .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(3))
                                 .build())

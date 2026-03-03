@@ -42,18 +42,18 @@ import java.util.concurrent.TimeUnit;
 @Command("personality")
 @Description("Configure Herobrine's personality")
 public class PersonalityTraitService extends ListenerAdapter {
-    @Autowired MessageTemplateEngine   templateEngine;
+    @Autowired MessageTemplateEngine templateEngine;
     @Autowired PersonalityTraitRepo traitRepo;
     @Autowired Event.Bus<GenericEvent> jdaEventBus;
-    @Autowired TraitEditorService   creatorService;
+    @Autowired TraitEditorService    creatorService;
 
     private @NonFinal List<? extends Event.Listener<? extends GenericEvent>> listeners = new ArrayList<>();
 
     @Command(permission = "8")
     @Description("Reload listeners for all personality traits")
-    public void reload(@Nullable IReplyCallback callback) {
+    public void reload(@Nullable IReplyCallback callback, @Nullable Guild guild) {
         listeners.forEach(Container.Base::close);
-        listeners = Streams.of(traitRepo.findAll())
+        listeners = Streams.of(guild == null ? traitRepo.findAll() : traitRepo.findAllByGuildId(guild.getIdLong()))
                 .map(trait -> trait.getDiscordTrigger()
                         .apply(jdaEventBus)
                         .mapData(JdaUtil.eventGuildFilter(trait.getGuildId()))
@@ -111,7 +111,7 @@ public class PersonalityTraitService extends ListenerAdapter {
         event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
-        reload(null);
+        reload(null, null);
 
         log.info("Initialized");
     }
