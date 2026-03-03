@@ -44,7 +44,7 @@ public class JdaUtil {
     }
 
     public static MessageEditData convertToEditData(MessageCreateData message) {
-        var edit = new MessageEditBuilder().setReplace(true);
+        var edit = new MessageEditBuilder().setReplace(true).useComponentsV2(message.isUsingComponentsV2());
 
         if (!message.getContent().isBlank()) edit = edit.setContent(message.getContent());
         if (!message.getEmbeds().isEmpty()) edit = edit.setEmbeds(message.getEmbeds());

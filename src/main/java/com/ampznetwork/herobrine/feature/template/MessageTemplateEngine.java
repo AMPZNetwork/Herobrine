@@ -46,6 +46,8 @@ import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageBulkDeleteEvent;
+import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -66,6 +68,7 @@ import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.StringSerializable;
 import org.comroid.api.func.util.Streams;
 import org.comroid.api.text.Markdown;
+import org.comroid.api.tree.UncheckedCloseable;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
@@ -149,16 +152,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     public JdaCommandAdapter.ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
         var result = findInteractiveMode(channel, user);
 
-        if (result.isPresent()) {
-            var mode = result.get();
-            var file = FileUpload.fromData(mode.buffer.toString().getBytes(StandardCharsets.UTF_8), "message.dmt");
-            return new JdaCommandAdapter.ResponseCallback(new MessageCreateBuilder().addEmbeds(new EmbedBuilder().setDescription(
-                            "Interactive mode was exited")
-                    .setFooter("The complete template is contained as a file attachment to this message")
-                    .build()).addComponents(FileDisplay.fromFile(file)), message -> {
-                interactive.removeIf(it -> it.channel.equals(channel) && it.user.equals(user));
-                return message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).map($ -> message);
-            });
+        if (result.isPresent()) try (var mode = result.get()) {
+            return mode.createExitCallback();
         }
 
         return new JdaCommandAdapter.ResponseCallback(new EmbedBuilder().setDescription(
@@ -295,8 +290,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             }
 
             event.deferReply(true)
-                    .flatMap(hook -> topmostMessageByReferences(channel,
-                            reference).flatMap(referenced -> hookSendFinal(event,
+                    .flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> hookSendFinal(
+                                    event,
                                     channel,
                                     message,
                                     referenced,
@@ -392,6 +387,16 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         if (txt.isEmpty()) return;
 
         message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).queue();
+    }
+
+    @Override
+    public void onMessageDelete(@NonNull MessageDeleteEvent event) {
+        handleMessageDelete(event.getMessageIdLong());
+    }
+
+    @Override
+    public void onMessageBulkDelete(@NonNull MessageBulkDeleteEvent event) {
+        event.getMessageIds().stream().mapToLong(Long::parseLong).forEach(this::handleMessageDelete);
     }
 
     @Override
@@ -577,9 +582,16 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
                 ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here")));
     }
 
+    private void handleMessageDelete(long messageId) {
+        interactive.stream()
+                .filter(it -> it.infoMessage.getIdLong() == messageId)
+                .toList()
+                .forEach(InteractiveMode::close);
+    }
+
     @Value
     @EqualsAndHashCode(of = { "channel", "user" })
-    private class InteractiveMode {
+    private class InteractiveMode implements UncheckedCloseable {
         MessageChannel channel;
         UserSnowflake  user;
         Message        infoMessage;
@@ -631,6 +643,33 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
         private String linePrefix(int lineCount, int lineIndex) {
             return ("%0" + lineCount + "d").formatted(lineIndex);
+        }
+
+        public JdaCommandAdapter.ResponseCallback createExitCallback() {
+            return new JdaCommandAdapter.ResponseCallback(createExitMessage(),
+                    message -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE));
+        }
+
+        private MessageCreateBuilder createExitMessage() {
+            var file = FileUpload.fromData(buffer.toString().getBytes(StandardCharsets.UTF_8), "message.dmt");
+            return new MessageCreateBuilder().useComponentsV2()
+                    .addComponents(TextDisplay.of("## Interactive mode was exited"),
+                            TextDisplay.of("The complete template is contained as a file attachment to this message"),
+                            FileDisplay.fromFile(file));
+        }
+
+        @Override
+        public void close() {
+            try {
+                var exitMessage = createExitMessage().build();
+
+                infoMessage.editMessage(JdaUtil.convertToEditData(exitMessage)).onErrorFlatMap(t -> {
+                    log.log(Level.FINE, "Could not edit info message, sending new message", t);
+                    return channel.sendMessage(exitMessage);
+                }).flatMap(message -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE)).queue();
+            } finally {
+                interactive.remove(this);
+            }
         }
     }
 }
