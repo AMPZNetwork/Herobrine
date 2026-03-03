@@ -429,10 +429,10 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     private Optional<String> findTemplate(Message message) {
-        if (message.getAuthor().isBot() && message.getAttachments()
-                .stream()
-                .map(Message.Attachment::getFileName)
-                .noneMatch(name -> name.endsWith(".dmt"))) return Optional.empty();
+        if (message.getAttachments()
+                    .stream()
+                    .map(Message.Attachment::getFileName)
+                    .noneMatch(name -> name.endsWith(".dmt")) || message.getAuthor().isBot()) return Optional.empty();
 
         var content = message.getContentRaw();
         var matcher = MD_PATTERN.matcher(content);
