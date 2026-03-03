@@ -46,7 +46,17 @@ public class OperatorVisitor extends DiscordMessageTemplateParserBaseVisitor<Ope
 
     @Override
     public Operator visitOpModulo(DiscordMessageTemplateParser.OpModuloContext ctx) {
-        return Operator.Modulo;
+        return Operator.Modulus;
+    }
+
+    @Override
+    public Operator visitOpEquals(DiscordMessageTemplateParser.OpEqualsContext ctx) {
+        return Operator.Equals;
+    }
+
+    @Override
+    public Operator visitOpNotEquals(DiscordMessageTemplateParser.OpNotEqualsContext ctx) {
+        return Operator.NotEquals;
     }
 
     @Override

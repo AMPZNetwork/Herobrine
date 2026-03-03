@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.util.Objects;
 import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -70,11 +71,21 @@ public enum Operator implements CodeComponent, BinaryOperator<Object> {
             if (x instanceof Number nx && y instanceof Number ny) return nx.doubleValue() / ny.doubleValue();
             throw invalidArg(x, y);
         }
-    }, Modulo("%") {
+    }, Modulus("%") {
         @Override
         public Object apply(Object x, Object y) {
             if (x instanceof Number nx && y instanceof Number ny) return nx.doubleValue() % ny.doubleValue();
             throw invalidArg(x, y);
+        }
+    }, Equals("==") {
+        @Override
+        public Object apply(Object x, Object y) {
+            return Objects.equals(x, y);
+        }
+    }, NotEquals("!=") {
+        @Override
+        public Object apply(Object x, Object y) {
+            return !Objects.equals(x, y);
         }
     }, LogicOr("||") {
         @Override

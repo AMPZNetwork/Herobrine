@@ -13,6 +13,8 @@ operator_binary
     | ASTERISK #opMultiply
     | SLASH #opDivide
     | PERCENT #opModulo
+    | EQUALS EQUALS #opEquals
+    | EXCLAMATION EQUALS #opNotEquals
     | BREAK BREAK #opLogicOr
     | AMPERSAND AMPERSAND #opLogicAnd
     | BREAK #opBinaryOr
