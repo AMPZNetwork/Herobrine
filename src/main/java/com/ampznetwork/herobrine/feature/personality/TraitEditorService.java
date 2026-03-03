@@ -40,6 +40,7 @@ import org.comroid.commands.impl.discord.JdaCommandAdapter;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -61,6 +62,7 @@ import java.util.stream.Collectors;
 
 @Log
 @Service
+@ConditionalOnBean({ PersonalityTraitService.class })
 public class TraitEditorService extends ListenerAdapter implements ErrorLogSender, AuditLogSender {
     public static final String INTERACTION_EDIT_TRIGGER  = "personality_trait_edit_trigger";
     public static final String INTERACTION_EDIT_FILTER   = "personality_trait_edit_filter";
