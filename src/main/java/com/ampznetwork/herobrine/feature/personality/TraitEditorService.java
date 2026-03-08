@@ -8,6 +8,7 @@ import com.ampznetwork.herobrine.feature.personality.model.RandomDetail;
 import com.ampznetwork.herobrine.repo.PersonalityTraitRepo;
 import com.ampznetwork.herobrine.trigger.DiscordTrigger;
 import com.ampznetwork.herobrine.util.Constant;
+import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.java.Log;
@@ -98,6 +99,12 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
 
     @Override
     public void onButtonInteraction(@NonNull ButtonInteractionEvent event) {
+        if (!List.of(INTERACTION_EDIT_TRIGGER,
+                INTERACTION_EDIT_FILTER,
+                INTERACTION_EDIT_RANDOM,
+                INTERACTION_EDIT_TEMPLATE,
+                INTERACTION_SUMBIT).contains(event.getComponentId())) return;
+
         var guild  = event.getGuild();
         var editor = findTraitEditor(guild, event.getMember()).orElse(null);
 
@@ -156,6 +163,12 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
 
     @Override
     public void onModalInteraction(@NonNull ModalInteractionEvent event) {
+        if (!List.of(INTERACTION_EDIT_TRIGGER,
+                INTERACTION_EDIT_FILTER,
+                INTERACTION_EDIT_RANDOM,
+                INTERACTION_EDIT_TEMPLATE,
+                INTERACTION_SUMBIT).contains(event.getModalId())) return;
+
         var editor = findTraitEditor(event.getGuild(), event.getMember()).orElseThrow();
 
         switch (event.getModalId()) {
@@ -210,16 +223,7 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
             }
         }
 
-        event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Success")
-                        .setColor(Constant.COLOR_SUCCESS)
-                        .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(2))
-                        .build())
-                .setEphemeral(true)
-                .map(hook -> hook.getCallbackResponse().getMessage())
-                .flatMap(response -> editor.refreshInfoMessage().map($ -> response))
-                .delay(2, TimeUnit.SECONDS)
-                .flatMap(Message::delete)
-                .queue();
+        JdaUtil.replySuccess(event, response -> editor.refreshInfoMessage().map($ -> response)).queue();
     }
 
     private Modal.Builder createEditTriggerModal(@Nullable TraitEditor editor) {

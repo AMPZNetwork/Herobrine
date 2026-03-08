@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.chatmod;
+package com.ampznetwork.herobrine.feature.chatmod.protocol;
 
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.fasterxml.jackson.databind.ObjectMapper;

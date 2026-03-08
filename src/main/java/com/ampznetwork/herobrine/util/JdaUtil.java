@@ -9,6 +9,7 @@ import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
+import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
@@ -19,6 +20,7 @@ import org.comroid.api.text.Markdown;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -82,5 +84,23 @@ public class JdaUtil {
 
     public static @Nullable Message getMessage(GenericMessageEvent event) {
         return event instanceof MessageReceivedEvent mre ? mre.getMessage() : null;
+    }
+
+    public static RestAction<?> replySuccess(
+            IReplyCallback callback
+    ) {
+        return replySuccess(callback, null);
+    }
+
+    public static RestAction<?> replySuccess(
+            IReplyCallback callback,
+            @Nullable Function<Message, ? extends RestAction<Message>> finalizer
+    ) {
+        var action = callback.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Success")
+                .setColor(Constant.COLOR_SUCCESS)
+                .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(2))
+                .build()).setEphemeral(true).map(hook -> hook.getCallbackResponse().getMessage());
+        if (finalizer != null) action = action.flatMap(finalizer);
+        return action.delay(2, TimeUnit.SECONDS).flatMap(Message::delete);
     }
 }
