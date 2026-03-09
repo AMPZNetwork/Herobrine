@@ -120,6 +120,8 @@ public class ChannelBridgeService extends ListenerAdapter {
         event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
+        reload(null);
+
         log.info("Initialized");
     }
 }
