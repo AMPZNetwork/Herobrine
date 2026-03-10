@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine.feature.chatmod;
 
+import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
 import com.ampznetwork.herobrine.feature.chatmod.model.GuildChannelNameAutoFillProvider;
 import com.ampznetwork.herobrine.feature.chatmod.model.LoadedBridge;
@@ -17,6 +18,7 @@ import org.comroid.api.text.StringMode;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Log
 @Service
@@ -55,7 +60,8 @@ public class ChannelBridgeService extends ListenerAdapter {
     @Autowired ChannelBridgeConfigRepo channelBridges;
     @Autowired JacksonPacketConverter  packetConverter;
 
-    Collection<LoadedBridge> loaded = new HashSet<>();
+    Collection<LoadedBridge>                                     loaded         = new HashSet<>();
+    Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
 
     @Command(permission = "16")
     @Description("Reloads channel bridge configurations and listeners")
@@ -66,6 +72,7 @@ public class ChannelBridgeService extends ListenerAdapter {
             loaded.remove(bridge);
         }
 
+        // load channel bridges
         for (var config : guild == null
                           ? channelBridges.findAll()
                           : channelBridges.findAllByGuildId(guild.getIdLong())) {
@@ -86,7 +93,26 @@ public class ChannelBridgeService extends ListenerAdapter {
             loaded.add(bridge);
         }
 
-        return "Loaded %d channel bridges".formatted(loaded.size());
+        // load system channels
+        for (var each : (guild == null ? jda.getGuilds() : List.of(guild))) {
+            var guildId = each.getIdLong();
+
+            channelBridges.findRabbitByGuildId(guildId)
+                    .stream()
+                    .flatMap(uri -> Rabbit.of(uri).stream())
+                    .map(rabbit -> rabbit.exchange("minecraft", "topic"))
+                    .map(exchange -> exchange.route("chat.system", packetConverter))
+                    .forEach(route -> {
+                        route.subscribeData(this::handleSystemPackets);
+
+                        systemChannels.compute(guildId, (k, v) -> {
+                            if (v != null) v.close();
+                            return route;
+                        });
+                    });
+        }
+
+        return "Loaded %d channel bridges and %d system channels".formatted(loaded.size(), systemChannels.size());
     }
 
     @Command
@@ -123,5 +149,9 @@ public class ChannelBridgeService extends ListenerAdapter {
         reload(null);
 
         log.info("Initialized");
+    }
+
+    private void handleSystemPackets(ChatMessagePacket packet) {
+        // maybe this will be useful later
     }
 }
