@@ -66,6 +66,7 @@ public class AccountLinkerService extends ListenerAdapter {
                 }
 
             linkedAccounts.save(account);
+            this.pending.remove(pending);
             return "Your accounts have successfully been linked!";
         });
     }
@@ -86,7 +87,7 @@ public class AccountLinkerService extends ListenerAdapter {
                 return "Your account is already linked to Minecraft username " + Player.fetchUsername(result.get()
                         .getMinecraftId()).join();
 
-            var token         = newToken();
+            var token = newToken();
             var systemChannel = minecraftChannelBridgeService.getSystemChannel(guild.getIdLong());
 
             if (systemChannel == null) return "No system channel was found for this server";
