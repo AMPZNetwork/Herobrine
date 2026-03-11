@@ -108,7 +108,7 @@ public class AccountLinkerService extends ListenerAdapter {
     }
 
     private ChatMessagePacket createMinecraftTokenPacket(UserSnowflake user, String username, String token) {
-        var text = Component.text("Please verify your Account using this token: ")
+        var text = Component.text("Please verify your Minecraft account using this token: ")
                 .append(Component.text(token, NamedTextColor.GOLD));
         var message = new ChatMessage(null, "Herobrine", text);
 
