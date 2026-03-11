@@ -14,6 +14,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.stream.Stream;
@@ -26,7 +27,8 @@ public class ApplicationContextProvider implements ApplicationContextAware, Cont
     private static ApplicationContext         applicationContext;
 
     public static ApplicationContextProvider get() {
-        return instance;
+        return Objects.requireNonNull(instance,
+                "ApplicationContextProvider not initialized yet! Please verify bean lifecycle");
     }
 
     public static <T, R extends T> R bean(Class<T> type) {

@@ -60,8 +60,12 @@ public class ChannelBridgeService extends ListenerAdapter {
     @Autowired ChannelBridgeConfigRepo channelBridges;
     @Autowired JacksonPacketConverter  packetConverter;
 
-    Collection<LoadedBridge>                                     loaded         = new HashSet<>();
-    Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
+    private final Collection<LoadedBridge>                                     loaded         = new HashSet<>();
+    private final Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
+
+    public @Nullable Rabbit.Exchange.Route<ChatMessagePacket> getSystemChannel(long guildId) {
+        return systemChannels.getOrDefault(guildId, null);
+    }
 
     @Command(permission = "16")
     @Description("Reloads channel bridge configurations and listeners")

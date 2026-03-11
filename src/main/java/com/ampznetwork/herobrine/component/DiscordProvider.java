@@ -1,6 +1,7 @@
 package com.ampznetwork.herobrine.component;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
+import com.ampznetwork.herobrine.util.ApplicationContextProvider;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -29,6 +30,8 @@ import java.io.File;
 public class DiscordProvider extends ListenerAdapter {
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
+    /** this field exists to control lifecycle */
+    @Autowired ApplicationContextProvider context;
     @Lazy @Autowired Event.Bus<GenericEvent> jdaEventBus;
 
     @Override
