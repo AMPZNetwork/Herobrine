@@ -1,10 +1,12 @@
 package com.ampznetwork.herobrine.feature.ranksync;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
+import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import lombok.NoArgsConstructor;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
@@ -41,13 +43,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Log
 @Service
 @NoArgsConstructor
-public class RankSyncService extends ListenerAdapter {
+public class RankSyncService extends ListenerAdapter implements AuditLogSender {
     public static final String META_DISCORD_USER_ID   = "ranksync-discord-user-id";
     public static final String META_DISCORD_ROLE_ID   = "ranksync-discord-role-id";
     public static final String META_DISCORD_ROLE_TIER = "ranksync-tier";
@@ -68,7 +71,7 @@ public class RankSyncService extends ListenerAdapter {
     @Description("Perform a refresh on LuckPerms ranks")
     @Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     @SuppressWarnings({ "SuspiciousToArrayCall", "RedundantSuppression" /* false-positive */ })
-    public CompletableFuture<String> rankUpdate() {
+    public CompletableFuture<String> rankUpdate(Guild guild) {
         final var userApi  = lpApi.child(UserApi.class).assertion();
         final var groupApi = lpApi.child(GroupsApi.class).assertion();
         final var actions = new int[3];
@@ -148,12 +151,12 @@ public class RankSyncService extends ListenerAdapter {
                     }
 
                     return Stream.of(CompletableFuture.allOf(entry.getValue().stream().flatMap(role -> {
-                        var guild  = role.getGuild();
-                        var member = guild.getMember(user);
+                        var roleGuild = role.getGuild();
+                        var member    = roleGuild.getMember(user);
 
                         if (member == null) {
                             log.fine("Member %s not found in guild %s".formatted(user.getEffectiveName(),
-                                    guild.getName()));
+                                    roleGuild.getName()));
                             actions[2]++;
                             return Stream.empty();
                         }
@@ -165,7 +168,7 @@ public class RankSyncService extends ListenerAdapter {
                         }
 
                         log.fine("Applying role %s to member %s".formatted(role.getName(), member.getEffectiveName()));
-                        return Stream.of(guild.addRoleToMember(member, role)
+                        return Stream.of(roleGuild.addRoleToMember(member, role)
                                 .submit()
                                 .thenRun(() -> actions[0]++)
                                 .exceptionally(Debug.exceptionLogger("Could not add role %s to member %s".formatted(role.getName(),
@@ -173,10 +176,14 @@ public class RankSyncService extends ListenerAdapter {
                     }).toArray(CompletableFuture[]::new)));
                 }).toArray(CompletableFuture[]::new)))
                 .exceptionally(Debug.exceptionLogger("Could not fetch all necessary LuckPerms data"))
-                .thenApply($ -> ("Rank Synchronization complete!\n%d actions performed, %d actions skipped, %d invalid actions").formatted(
-                        actions[0],
-                        actions[1],
-                        actions[2]));
+                .thenApply($ -> {
+                    var message = ("Rank Synchronization complete!\n%d actions performed, %d actions skipped, %d invalid actions").formatted(
+                            actions[0],
+                            actions[1],
+                            actions[2]);
+                    audit().newEntry().guild(guild).level(Level.FINE).message(message).queue();
+                    return message;
+                });
     }
 
     @Command(value = "rankinfo", permission = "8")
@@ -238,8 +245,7 @@ public class RankSyncService extends ListenerAdapter {
 
     private CompletionStage<Map<String, GroupData>> parallelFetchGroups(Collection<String> names) {
         final @SuppressWarnings("unchecked") CompletableFuture<GroupData>[] requests = new CompletableFuture[names.size()];
-        final var                                                           groupApi = lpApi.child(GroupsApi.class)
-                .assertion();
+        final var groupApi = lpApi.child(GroupsApi.class).assertion();
 
         var i = 0;
         for (var name : names) {
