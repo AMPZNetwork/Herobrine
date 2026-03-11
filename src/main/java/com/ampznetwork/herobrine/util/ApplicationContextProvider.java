@@ -56,9 +56,9 @@ public class ApplicationContextProvider implements ApplicationContextAware, Cont
 
     public static <T, R extends T> Optional<R> wrap(Class<T> type, @Nullable String name) {
         try {
-            return Polyfill.uncheckedCast(name == null
+            return Optional.ofNullable(Polyfill.uncheckedCast(name == null
                                           ? applicationContext.getBean(type)
-                                          : applicationContext.getBean(name, type));
+                                          : applicationContext.getBean(name, type)));
         } catch (Throwable t) {
             log.log(Level.WARNING,
                     "Bean '%s' of type %s could not be obtained; %s".formatted(name,

@@ -32,7 +32,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -41,7 +40,6 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -69,7 +67,7 @@ public class RankSyncService extends ListenerAdapter implements AuditLogSender {
 
     @Command(value = "rankupdate", permission = "8")
     @Description("Perform a refresh on LuckPerms ranks")
-    @Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
+    //@Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     @SuppressWarnings({ "SuspiciousToArrayCall", "RedundantSuppression" /* false-positive */ })
     public CompletableFuture<String> rankUpdate(Guild guild) {
         final var userApi  = lpApi.child(UserApi.class).assertion();

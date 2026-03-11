@@ -8,9 +8,14 @@ import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.api.model.protocol.PacketType;
 import com.ampznetwork.chatmod.api.parse.ChatMessageParser;
+import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
 import com.ampznetwork.herobrine.feature.chatmod.ChannelBridgeService;
+import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
+import com.ampznetwork.herobrine.util.ApplicationContextProvider;
+import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
 import lombok.Value;
+import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -21,19 +26,23 @@ import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.comroid.api.func.util.Debug;
+import org.comroid.api.func.util.Streams;
 import org.comroid.api.net.Rabbit;
+import org.comroid.api.text.Markdown;
 import org.comroid.api.tree.UncheckedCloseable;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import static net.kyori.adventure.text.Component.*;
 import static net.kyori.adventure.text.event.ClickEvent.*;
 import static net.kyori.adventure.text.event.HoverEvent.*;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
+@Log
 @Value
 public class LoadedBridge implements UncheckedCloseable {
     ChannelBridgeService                     bridgeService;
@@ -59,7 +68,9 @@ public class LoadedBridge implements UncheckedCloseable {
             case CHAT:
                 var sb = new StringBuilder();
                 Util.Kyori.COMPONENT_TO_MARKDOWN.flatten(msg.getText(), sb::append);
-                builder.setContent(sb.toString());
+                var string = sb.toString();
+                string = convertMentions_MinecraftToDiscord(string);
+                builder.setContent(string);
                 break;
             case JOIN:
                 builder.setContent("> Joined the game");
@@ -90,14 +101,16 @@ public class LoadedBridge implements UncheckedCloseable {
 
         var author = event.getAuthor();
         if (author.isBot()) return;
-        var msg    = event.getMessage();
-        var guild  = event.getGuild();
-        var bundle = convertDiscordMessageToComponent(guild, author, msg, msg.getContentRaw());
+        var msg     = event.getMessage();
+        var guild   = event.getGuild();
+        var content = convertMentions_DiscordToMinecraft(msg.getContentRaw());
+        var bundle  = convertDiscordMessageToComponent(guild, author, msg, content);
 
         handle(guild, author, bundle);
     }
 
     public void handle(Guild guild, User author, String contentRaw) {
+        contentRaw = convertMentions_DiscordToMinecraft(contentRaw);
         var bundle = convertDiscordMessageToComponent(guild, author, null, contentRaw);
 
         handle(guild, author, bundle);
@@ -114,6 +127,44 @@ public class LoadedBridge implements UncheckedCloseable {
                 List.of(ChannelBridgeService.ENDPOINT_NAME));
 
         route.send(packet);
+    }
+
+    private String convertMentions_DiscordToMinecraft(String string) {
+        final var result = ApplicationContextProvider.wrap(LinkedAccountRepository.class);
+        if (result.isEmpty()) return string;
+
+        var matcher = Message.MentionType.USER.getPattern().matcher(string);
+        var sb      = new StringBuilder();
+        var links = Streams.of(result.get().findAll())
+                .filter(account -> account.getMinecraftId() != null)
+                .collect(Collectors.toMap(account -> String.valueOf(account.getDiscordId()),
+                        account -> Player.fetchUsername(account.getMinecraftId()).join()));
+
+        while (matcher.find()) {
+            var userId = matcher.group(1);
+            var link   = links.get(userId);
+
+            matcher.appendReplacement(sb, Markdown.Italic.apply('@' + link));
+        }
+
+        matcher.appendTail(sb);
+
+        return sb.toString();
+    }
+
+    private String convertMentions_MinecraftToDiscord(String string) {
+        final var result = ApplicationContextProvider.wrap(LinkedAccountRepository.class);
+        if (result.isEmpty()) return string;
+
+        var links = Streams.of(result.get().findAll())
+                .filter(account -> account.getMinecraftId() != null)
+                .collect(Collectors.toMap(account -> Player.fetchUsername(account.getMinecraftId()).join(),
+                        LinkedAccount::getDiscordId));
+
+        for (var mapping : links.entrySet())
+            string = string.replaceAll(mapping.getKey(), "<@%d>".formatted(mapping.getValue()));
+
+        return string;
     }
 
     private ChatMessageParser.MessageBundle convertDiscordMessageToComponent(
