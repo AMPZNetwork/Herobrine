@@ -105,7 +105,7 @@ public class ChannelBridgeService extends ListenerAdapter {
                     .stream()
                     .flatMap(uri -> Rabbit.of(uri).stream())
                     .map(rabbit -> rabbit.exchange("minecraft", "topic"))
-                    .map(exchange -> exchange.route("chat.system", packetConverter))
+                    .map(exchange -> exchange.route("herobrine.chat.system", "chat.system", packetConverter))
                     .forEach(route -> {
                         route.subscribeData(this::handleSystemPackets);
 
