@@ -84,7 +84,7 @@ public class MaintenanceProvider {
         return Arrays.binarySearch(superadmins, user.getIdLong()) != -1;
     }
 
-    private void verifySuperadmin(User user) {
+    public void verifySuperadmin(User user) {
         if (!isSuperadmin(user)) throw new CommandError("You are not permitted to use this maintenance command");
     }
 }
