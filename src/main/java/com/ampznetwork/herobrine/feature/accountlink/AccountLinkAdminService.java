@@ -41,7 +41,7 @@ public class AccountLinkAdminService extends ListenerAdapter {
 
             embed.setTitle("Linked Accounts of User %s".formatted(user));
             if (account.getMinecraftId() instanceof UUID minecraftId) embed.addField("Minecraft",
-                    "Username: `%s`\nUser ID: `%s`".formatted(Player.fetchUsername(minecraftId), minecraftId),
+                    "Username: `%s`\nUser ID: `%s`".formatted(Player.fetchUsername(minecraftId).join(), minecraftId),
                     false);
 
             return embed.build();
