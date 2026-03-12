@@ -25,11 +25,15 @@ import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Log
 @Service
@@ -93,7 +97,10 @@ public class AccountLinkerService extends ListenerAdapter {
             if (systemChannel == null) return "No system channel was found for this server";
             systemChannel.send(createMinecraftTokenPacket(user, username, token));
 
-            var pendingLink = new PendingMinecraftLink(user.getIdLong(), username, token);
+            var pendingLink = new PendingMinecraftLink(user.getIdLong(),
+                    username,
+                    token,
+                    Instant.now().plus(PendingLink.TIMEOUT));
             pending.add(pendingLink);
             return "Please check in-game for your verification token, then use `/link verify <token>` to verify your account linkage";
         });
@@ -106,6 +113,13 @@ public class AccountLinkerService extends ListenerAdapter {
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
+    }
+
+    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
+    public void cleanup() {
+        final var now = Instant.now();
+
+        pending.removeIf(link -> link.expiry().isBefore(now));
     }
 
     private ChatMessagePacket createMinecraftTokenPacket(UserSnowflake user, String username, String token) {
@@ -133,10 +147,15 @@ public class AccountLinkerService extends ListenerAdapter {
     }
 
     private interface PendingLink {
+        Duration TIMEOUT = Duration.ofMinutes(15);
+
         long userId();
 
         String token();
+
+        Instant expiry();
     }
 
-    private record PendingMinecraftLink(long userId, String minecraftUsername, String token) implements PendingLink {}
+    private record PendingMinecraftLink(long userId, String minecraftUsername, String token, Instant expiry)
+            implements PendingLink {}
 }
