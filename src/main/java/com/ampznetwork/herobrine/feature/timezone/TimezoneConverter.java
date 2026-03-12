@@ -44,7 +44,7 @@ public class TimezoneConverter extends ListenerAdapter {
     public static final DateTimeFormatter FORMATTER    = DateTimeFormatter.ofPattern("HH:mm");
     public static final Emoji             EMOJI        = Emoji.fromUnicode("⏰"); // ⏰
     public static final Pattern           TIME_PATTERN = Pattern.compile(
-            "(?<hour>\\d{1,2})([.:]?(?<minute>\\d{1,2}))?(?<mid>[ap]m)?");
+            "(?<hour>\\d{1,2})(:(?<minute>\\d{1,2}))?(?<mid>[ap]m)?");
 
     @Autowired UserPreferenceRepo users;
 
