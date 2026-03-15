@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
@@ -28,6 +29,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -59,7 +61,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
         return "Config updated";
     }
 
-    @Scheduled(fixedDelay = 5, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS)
     public void updateAll() {
         updateNicknames(null);
     }
@@ -85,6 +87,8 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                     .collect(Collectors.toMap(LinkedAccount::getDiscordId,
                             account -> Player.fetchUsername(account.getMinecraftId()).join()));
 
+            record FailedUser(UserSnowflake user, String playerName, Throwable throwable) {}
+            var failed = new HashSet<FailedUser>();
             for (var member : members) {
                 if (!minecraftPlayernames.containsKey(member.getIdLong())) continue;
 
@@ -101,13 +105,18 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                                     : "Name does not match Minecraft Username")
                             .queue();
                 } catch (Throwable t) {
-                    newErrorEntry().guild(guild)
-                            .level(Level.WARNING)
-                            .message("Unable to set nickname for %s".formatted(member))
-                            .throwable(t)
-                            .queue();
+                    failed.add(new FailedUser(member, playerName, t));
                 }
             }
+
+            newErrorEntry().guild(guild)
+                    .level(Level.WARNING)
+                    .message("Unable to set nickname for users:\n- " + failed.stream()
+                            .map(entry -> "%s - `%s` - Reason: %s".formatted(entry.user,
+                                    entry.playerName,
+                                    entry.throwable.getClass().getSimpleName()))
+                            .collect(Collectors.joining("\n- ")))
+                    .queue();
         }
     }
 
