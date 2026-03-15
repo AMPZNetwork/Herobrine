@@ -63,11 +63,11 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
 
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS)
     public void updateAll() {
-        updateNicknames(null);
+        update(null);
     }
 
-    @Command(value = "update", permission = "134217728")
-    public void updateNicknames(@Nullable Guild guild) {
+    @Command(permission = "134217728")
+    public void update(@Nullable Guild guild) {
         for (var config : guild == null
                           ? enforcerConfigRepo.findAll()
                           : enforcerConfigRepo.findById(guild.getIdLong()).stream().toList()) {
