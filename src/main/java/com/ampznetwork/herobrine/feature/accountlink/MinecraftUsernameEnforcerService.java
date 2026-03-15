@@ -67,6 +67,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
     }
 
     @Command(permission = "134217728")
+    @Description("Update all nicknames in this guild")
     public void update(@Nullable Guild guild) {
         for (var config : guild == null
                           ? enforcerConfigRepo.findAll()
