@@ -97,7 +97,8 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                 if (playerName == null) continue;
 
                 var nickname = member.getNickname();
-                if (nickname != null && !nickname.equals(playerName)) auditIllegalNickname(guild, member, playerName);
+                if (playerName.equals(nickname)) continue;
+                else if (nickname != null) auditIllegalNickname(guild, member, playerName);
 
                 try {
                     member.modifyNickname(playerName)
