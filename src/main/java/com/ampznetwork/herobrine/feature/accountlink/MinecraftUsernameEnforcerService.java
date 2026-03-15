@@ -61,7 +61,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
         return "Config updated";
     }
 
-    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS)
+    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.DAYS)
     public void updateAll() {
         update(null);
     }
@@ -97,7 +97,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                 if (playerName == null) continue;
 
                 var nickname = member.getNickname();
-                if (playerName.equals(nickname)) continue;
+                if (playerName.equals(nickname) || playerName.equals(member.getUser().getName())) continue;
                 else if (nickname != null) auditIllegalNickname(guild, member, playerName);
 
                 try {
