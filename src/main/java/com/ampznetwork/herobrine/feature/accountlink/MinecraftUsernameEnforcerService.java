@@ -3,6 +3,7 @@ package com.ampznetwork.herobrine.feature.accountlink;
 import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
 import com.ampznetwork.herobrine.feature.accountlink.model.MinecraftUsernameEnforcerConfig;
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.herobrine.repo.MinecraftUsernameEnforcerConfigRepository;
 import com.ampznetwork.libmod.api.entity.Player;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 @Log
 @Service
 @Command("mc-username-enforcer")
-public class MinecraftUsernameEnforcerService extends ListenerAdapter implements AuditLogSender {
+public class MinecraftUsernameEnforcerService extends ListenerAdapter implements AuditLogSender, ErrorLogSender {
     @Autowired JDA                                       jda;
     @Autowired MinecraftUsernameEnforcerConfigRepository enforcerConfigRepo;
     @Autowired LinkedAccountRepository                   linkedAccounts;
@@ -44,13 +45,14 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
     @Description("Change Minecraft username enforcer configuration")
     public String configure(
             Guild guild,
-            @Command.Arg @Description("Whether to forcibly change nicknames") boolean enforce
+            @Command.Arg(autoFill = { "yes", "no" }) @Description("Whether to forcibly change nicknames") String enforce
     ) {
         var guildId = guild.getIdLong();
         var config  = enforcerConfigRepo.findById(guildId).orElse(null);
+        var flag = "yes".equalsIgnoreCase(enforce);
 
-        if (config == null) config = new MinecraftUsernameEnforcerConfig(guildId, enforce);
-        else config.setEnforceNicknames(enforce);
+        if (config == null) config = new MinecraftUsernameEnforcerConfig(guildId, flag);
+        else config.setEnforceNicknames(flag);
 
         enforcerConfigRepo.save(config);
 
@@ -62,6 +64,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
         updateNicknames(null);
     }
 
+    @Command(value = "update", permission = "134217728")
     public void updateNicknames(@Nullable Guild guild) {
         for (var config : guild == null
                           ? enforcerConfigRepo.findAll()
@@ -91,11 +94,19 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                 var nickname = member.getNickname();
                 if (nickname != null && !nickname.equals(playerName)) auditIllegalNickname(guild, member, playerName);
 
-                member.modifyNickname(playerName)
-                        .reason(playerName == null
-                                ? "User does not have their account Linked"
-                                : "Name does not match Minecraft Username")
-                        .queue();
+                try {
+                    member.modifyNickname(playerName)
+                            .reason(playerName == null
+                                    ? "User does not have their account Linked"
+                                    : "Name does not match Minecraft Username")
+                            .queue();
+                } catch (Throwable t) {
+                    newErrorEntry().guild(guild)
+                            .level(Level.WARNING)
+                            .message("Unable to set nickname for %s".formatted(member))
+                            .throwable(t)
+                            .queue();
+                }
             }
         }
     }

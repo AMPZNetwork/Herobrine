@@ -17,6 +17,7 @@ import net.dv8tion.jda.api.utils.messages.MessageEditData;
 import org.comroid.api.Polyfill;
 import org.comroid.api.java.StackTraceUtils;
 import org.comroid.api.text.Markdown;
+import org.comroid.api.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -65,6 +66,8 @@ public class JdaUtil {
 
         if (t != null) {
             var str = StackTraceUtils.toString(t);
+            str = StringUtil.maxLength(str, 1000);
+
             embed.addField("Attached Exception", Markdown.CodeBlock.apply(str), false);
         }
 

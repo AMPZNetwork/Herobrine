@@ -65,7 +65,7 @@ public class ErrorLogService extends ListenerAdapter implements CommandErrorHand
     @Builder(builderMethodName = "newEntry", buildMethodName = "queue", builderClassName = "EntryAPI")
     public void queueEntry(
             Guild guild, @Nullable Level level, Object source, CharSequence message,
-            @Nullable Throwable t
+            @Nullable Throwable throwable
     ) {
         try {
             if (level == null) level = Level.INFO;
@@ -86,10 +86,10 @@ public class ErrorLogService extends ListenerAdapter implements CommandErrorHand
             var sourceName = source instanceof ErrorLogSender sender
                              ? sender.getErrorSourceName()
                              : String.valueOf(source);
-            var embed = JdaUtil.logEntryEmbed(level, sourceName, message, t);
+            var embed = JdaUtil.logEntryEmbed(level, sourceName, message, throwable);
 
             channel.sendMessageEmbeds(embed).queue();
-            log.log(Level.FINE, "[%s @ %s] %s: %s".formatted(level.getName(), guild, sourceName, message), t);
+            log.log(Level.FINE, "[%s @ %s] %s: %s".formatted(level.getName(), guild, sourceName, message), throwable);
         } catch (Throwable t0) {
             log.log(Level.WARNING, "Could not append audit log entry", t0);
         }
