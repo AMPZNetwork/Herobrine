@@ -4,7 +4,9 @@ import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.api.model.protocol.PacketType;
 import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
-import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
+import com.ampznetwork.herobrine.feature.accountlink.model.LinkType;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
+import com.ampznetwork.herobrine.feature.accountlink.model.event.AccountLinkEvent;
 import com.ampznetwork.herobrine.feature.chatmod.ChannelBridgeService;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.libmod.api.entity.Player;
@@ -22,6 +24,7 @@ import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -39,14 +42,15 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Command("link")
 public class AccountLinkerService extends ListenerAdapter {
-    private final Collection<PendingLink> pending = new HashSet<>();
-    @Autowired LinkedAccountRepository linkedAccounts;
-    @Autowired ChannelBridgeService    minecraftChannelBridgeService;
+    private final Collection<PendingLink>   pending = new HashSet<>();
+    @Autowired    LinkedAccountRepository   linkedAccounts;
+    @Autowired    ChannelBridgeService      minecraftChannelBridgeService;
+    @Autowired    ApplicationEventPublisher eventPublisher;
 
     @Command
     @Description("Verify account linkage after requesting a token")
     public CompletableFuture<String> verify(
-            UserSnowflake user,
+            Guild guild, UserSnowflake user,
             @Command.Arg @Description("The token you received") String token
     ) {
         return CompletableFuture.supplyAsync(() -> {
@@ -64,13 +68,14 @@ public class AccountLinkerService extends ListenerAdapter {
                 switch (pending) {
                     case PendingMinecraftLink mc -> {
                         var playerId = Player.fetchId(mc.minecraftUsername).join();
-                        account = new LinkedAccount(user.getIdLong(), playerId);
+                        account = LinkedAccount.builder().discordId(user.getIdLong()).minecraftId(playerId).build();
                     }
                     default -> throw new CommandError("Internal error\n-# Please contact the bot developers");
                 }
 
             linkedAccounts.save(account);
             this.pending.remove(pending);
+            eventPublisher.publishEvent(new AccountLinkEvent(this, guild, account, pending.type()));
             return "Your accounts have successfully been linked!";
         });
     }
@@ -154,8 +159,15 @@ public class AccountLinkerService extends ListenerAdapter {
         String token();
 
         Instant expiry();
+
+        LinkType type();
     }
 
     private record PendingMinecraftLink(long userId, String minecraftUsername, String token, Instant expiry)
-            implements PendingLink {}
+            implements PendingLink {
+        @Override
+        public LinkType type() {
+            return LinkType.Minecraft;
+        }
+    }
 }

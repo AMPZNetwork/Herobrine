@@ -1,7 +1,7 @@
 package com.ampznetwork.herobrine.feature.accountlink;
 
-import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
-import com.ampznetwork.herobrine.feature.accountlink.model.MinecraftUsernameEnforcerConfig;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.MinecraftUsernameEnforcerConfig;
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;

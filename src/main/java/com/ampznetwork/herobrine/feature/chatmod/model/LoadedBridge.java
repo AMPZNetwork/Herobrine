@@ -8,7 +8,7 @@ import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.api.model.protocol.PacketType;
 import com.ampznetwork.chatmod.api.parse.ChatMessageParser;
-import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
 import com.ampznetwork.herobrine.feature.chatmod.ChannelBridgeService;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;

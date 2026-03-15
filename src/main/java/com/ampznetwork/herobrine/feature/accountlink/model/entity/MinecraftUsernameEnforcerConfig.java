@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.accountlink.model;
+package com.ampznetwork.herobrine.feature.accountlink.model.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

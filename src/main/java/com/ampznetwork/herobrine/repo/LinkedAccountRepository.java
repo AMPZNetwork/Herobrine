@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.repo;
 
-import com.ampznetwork.herobrine.feature.accountlink.model.LinkedAccount;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;

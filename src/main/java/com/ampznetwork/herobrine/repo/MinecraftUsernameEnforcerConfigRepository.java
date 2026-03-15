@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.repo;
 
-import com.ampznetwork.herobrine.feature.accountlink.model.MinecraftUsernameEnforcerConfig;
+import com.ampznetwork.herobrine.feature.accountlink.model.entity.MinecraftUsernameEnforcerConfig;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.repository.CrudRepository;
 
