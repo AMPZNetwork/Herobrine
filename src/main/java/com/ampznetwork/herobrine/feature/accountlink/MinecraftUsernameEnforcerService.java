@@ -94,19 +94,11 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                 var nickname = member.getNickname();
                 if (nickname != null && !nickname.equals(playerName)) auditIllegalNickname(guild, member, playerName);
 
-                try {
-                    member.modifyNickname(playerName)
-                            .reason(playerName == null
-                                    ? "User does not have their account Linked"
-                                    : "Name does not match Minecraft Username")
-                            .queue();
-                } catch (Throwable t) {
-                    newErrorEntry().guild(guild)
-                            .level(Level.WARNING)
-                            .message("Unable to set nickname for %s".formatted(member))
-                            .throwable(t)
-                            .queue();
-                }
+                member.modifyNickname(playerName)
+                        .reason(playerName == null
+                                ? "User does not have their account Linked"
+                                : "Name does not match Minecraft Username")
+                        .queue();
             }
         }
     }
