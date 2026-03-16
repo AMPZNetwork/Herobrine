@@ -61,10 +61,7 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
             var memberIds = guild.loadMembers().get().stream().map(ISnowflake::getIdLong).toList();
             var mappings = Streams.of(linkedAccounts.findAllById(memberIds))
-                    .flatMap(account -> memberIds.stream()
-                            .filter(id -> account.getDiscordId() == id)
-                            .map(guild::getMemberById)
-                            .map(member -> new AccountMemberMapping(account, member)))
+                    .map(account -> new AccountMemberMapping(account, guild.getMemberById(account.getDiscordId())))
                     .toList();
 
             var actions = new HashSet<ActionTaken>();
