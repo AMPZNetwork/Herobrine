@@ -207,7 +207,7 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
         newAuditEntry().guild(guild)
                 .level(Level.WARNING)
-                .message("%s was assigned role %s, but they don'throwable have their %s account linked".formatted(user,
+                .message("%s was assigned role %s, but they don't have their %s account linked".formatted(user,
                         role,
                         type))
                 .queue();
