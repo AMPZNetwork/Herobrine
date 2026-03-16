@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.container.ContainerChildComponent;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.UserSnowflake;
@@ -20,6 +21,7 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
+import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.jspecify.annotations.NonNull;
@@ -57,12 +59,12 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
         return CompletableFuture.supplyAsync(() -> {
 
-            var mappings = guild.loadMembers()
-                    .get()
-                    .stream()
-                    .flatMap(member -> linkedAccounts.findById(member.getIdLong())
-                            .stream()
-                            .map(account -> new AccountMemberMapping(account, member)))
+            var memberIds = guild.loadMembers().get().stream().map(ISnowflake::getIdLong).toList();
+            var mappings = Streams.of(linkedAccounts.findAllById(memberIds))
+                    .flatMap(account -> memberIds.stream()
+                            .filter(id -> account.getDiscordId() == id)
+                            .map(guild::getMemberById)
+                            .map(member -> new AccountMemberMapping(account, member)))
                     .toList();
 
             var actions = new HashSet<ActionTaken>();
