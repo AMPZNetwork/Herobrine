@@ -7,6 +7,7 @@ import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 
 @Data
 @Entity
@@ -14,9 +15,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @IdClass(TicketData.Key.class)
 public class TicketData {
-    @Id        long        guildId;
-    @Id        long        ticketId;
-    @ManyToOne TicketTopic topic;
+    @Id                  long        guildId;
+    @Id                  long        ticketId;
+    @ManyToOne @Nullable TicketTopic topic;
     String title, description;
     long authorId, threadId;
     TicketState state;
