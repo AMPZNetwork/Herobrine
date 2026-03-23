@@ -1,0 +1,61 @@
+package com.ampznetwork.herobrine.feature.tickets;
+
+import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
+import com.ampznetwork.herobrine.feature.tickets.model.TicketConfiguration;
+import com.ampznetwork.herobrine.repo.TicketConfigurationRepository;
+import com.ampznetwork.herobrine.util.EmbedTemplate;
+import lombok.extern.java.Log;
+import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.comroid.annotations.Description;
+import org.comroid.commands.Command;
+import org.comroid.commands.impl.CommandManager;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Service;
+
+@Log
+@Service
+@Command("ticket-admin")
+public class TicketConfigurer extends ListenerAdapter implements AuditLogSender, ErrorLogSender {
+    @Autowired TicketConfigurationRepository configs;
+
+    @Command(permission = "16")
+    @Description("Configure the ticketing system")
+    public EmbedBuilder configure(
+            Guild guild, @Command.Arg(required = false) @Description("The base channel where ticket threads should be created") @Nullable TextChannel channel,
+            @Command.Arg(required = false) @Description("The base role for all team members") @Nullable Role team
+    ) {
+        if (channel == null) {
+            configs.deleteById(guild.getIdLong());
+            return EmbedTemplate.success("Ticket system disabled");
+        }
+
+        var config = configs.findById(guild.getIdLong())
+                .map(it -> it.setBaseChannelId(channel.getIdLong()).setTeamRoleId(team == null ? 0L : team.getIdLong()))
+                .orElseGet(() -> new TicketConfiguration(guild.getIdLong(), channel.getIdLong(), team == null ? 0L : team.getIdLong()));
+        configs.save(config);
+
+        return EmbedTemplate.success("Ticket configuration updated")
+                .addField("Ticket Channel", channel.getAsMention(), false)
+                .addField("Team role", team == null ? "<none>" : team.getAsMention(), false);
+    }
+
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) {
+        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
+        event.getApplicationContext().getBean(CommandManager.class).register(this);
+
+        log.info("Initialized");
+    }
+}
