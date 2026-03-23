@@ -6,6 +6,7 @@ import jakarta.persistence.IdClass;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.dv8tion.jda.api.components.selections.SelectOption;
 
 @Data
 @Entity
@@ -18,5 +19,9 @@ public class TicketTopic {
     String description;
     long   handlerRoleId;
 
-    record Key(long guildId, String name) {}
+    public SelectOption toSelectOption() {
+        return SelectOption.of(name, name).withDescription(description);
+    }
+
+    public record Key(long guildId, String name) {}
 }

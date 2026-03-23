@@ -1,8 +1,17 @@
 package com.ampznetwork.herobrine.util;
 
+import jakarta.persistence.AttributeConverter;
+import lombok.Value;
+import lombok.experimental.NonFinal;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.channel.unions.ChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
@@ -26,23 +35,17 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
+
 public class JdaUtil {
-    public static <RA extends RestAction<?>> Function<Throwable, RA> exceptionLogger(
-            Logger log, InteractionHook hook,
-            String message
-    ) {
+    public static <RA extends RestAction<?>> Function<Throwable, RA> exceptionLogger(Logger log, InteractionHook hook, String message) {
         return exceptionLogger(log, new MessageDeliveryTarget.Hook(hook), message);
     }
 
-    public static <RA extends RestAction<?>> Function<Throwable, RA> exceptionLogger(
-            Logger log,
-            MessageDeliveryTarget delivery,
-            String message
-    ) {
+    public static <RA extends RestAction<?>> Function<Throwable, RA> exceptionLogger(Logger log, MessageDeliveryTarget delivery, String message) {
         return t -> {
             log.log(Level.SEVERE, message, t);
-            return Polyfill.uncheckedCast(delivery.send("%s ```\n%s\n```".formatted(message,
-                    StackTraceUtils.toString(t))));
+            return Polyfill.uncheckedCast(delivery.send("%s ```\n%s\n```".formatted(message, StackTraceUtils.toString(t))));
         };
     }
 
@@ -58,10 +61,7 @@ public class JdaUtil {
         return edit.build();
     }
 
-    public static MessageEmbed logEntryEmbed(
-            Level level, String sourceName, CharSequence message,
-            @Nullable Throwable t
-    ) {
+    public static MessageEmbed logEntryEmbed(Level level, String sourceName, CharSequence message, @Nullable Throwable t) {
         var embed = new EmbedBuilder().setTitle(sourceName).setDescription(message).setFooter(level.getName());
 
         if (t != null) {
@@ -95,15 +95,60 @@ public class JdaUtil {
         return replySuccess(callback, null);
     }
 
-    public static RestAction<?> replySuccess(
-            IReplyCallback callback,
-            @Nullable Function<Message, ? extends RestAction<Message>> finalizer
-    ) {
+    public static RestAction<?> replySuccess(IReplyCallback callback, @Nullable Function<Message, ? extends RestAction<Message>> finalizer) {
         var action = callback.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Success")
                 .setColor(Constant.COLOR_SUCCESS)
                 .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(2))
                 .build()).setEphemeral(true).map(hook -> hook.getCallbackResponse().getMessage());
         if (finalizer != null) action = action.flatMap(finalizer);
         return action.delay(2, TimeUnit.SECONDS).flatMap(Message::delete);
+    }
+
+    private static JDA jda() {
+        return bean(JDA.class);
+    }
+
+    @Value
+    @NonFinal
+    private static abstract class SnowflakeConverter<T extends ISnowflake> implements AttributeConverter<T, @NotNull Long> {
+        @Override
+        public @NotNull Long convertToDatabaseColumn(T snowflake) {
+            return snowflake.getIdLong();
+        }
+
+        @Override
+        public abstract T convertToEntityAttribute(@NotNull Long id);
+    }
+
+    @Value
+    public static class UserConverter extends SnowflakeConverter<User> {
+        @Override
+        public User convertToEntityAttribute(@NotNull Long id) {
+            return jda().getUserById(id);
+        }
+    }
+
+    @Value
+    public static class GuildConverter extends SnowflakeConverter<Guild> {
+        @Override
+        public Guild convertToEntityAttribute(@NotNull Long id) {
+            return jda().getGuildById(id);
+        }
+    }
+
+    @Value
+    public static class RoleConverter extends SnowflakeConverter<Role> {
+        @Override
+        public Role convertToEntityAttribute(@NotNull Long id) {
+            return jda().getRoleById(id);
+        }
+    }
+
+    @Value
+    public static class ChannelConverter extends SnowflakeConverter<ChannelUnion> {
+        @Override
+        public ChannelUnion convertToEntityAttribute(@NotNull Long id) {
+            return jda().getChannelById(ChannelUnion.class, id);
+        }
     }
 }

@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 
 @Log
 @Service
-@Command("ticket")
-public class TicketService extends ListenerAdapter {
+@Command("ticket-topic")
+public class TicketTopicManager extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
