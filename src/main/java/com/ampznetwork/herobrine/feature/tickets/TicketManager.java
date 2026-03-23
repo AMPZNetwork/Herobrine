@@ -137,6 +137,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
                                     TicketState.Opened);
 
                             tickets.save(ticket);
+                            newAuditEntry().guild(guild).level(Level.FINER).message("%s has opened %s".formatted(event.getUser(), ticket)).queue();
 
                             return thread.sendMessage(ticket.toInfoMessage(config).build());
                         })
