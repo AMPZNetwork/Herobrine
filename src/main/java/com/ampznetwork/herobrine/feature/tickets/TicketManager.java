@@ -68,6 +68,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
 
         if (state.privileged && !isPrivileged(guild, config, channel, user, ticket.getTopic()))
             throw new CommandError("Only team members can apply this state!");
+        else if (user.getIdLong() != ticket.getAuthorId()) throw new CommandError("You are not permitted to use this command!");
 
         newAuditEntry().guild(guild).level(Level.FINE).message("%s is changing state of %s to %s".formatted(user, ticket, state)).queue();
 
