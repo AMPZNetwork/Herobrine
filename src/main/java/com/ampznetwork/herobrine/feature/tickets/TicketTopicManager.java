@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.components.selections.EntitySelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -59,28 +60,25 @@ public class TicketTopicManager extends ListenerAdapter {
 
     @Command(permission = "17179869184")
     @Description("Edit an existing ticket topic")
-    public void edit(SlashCommandInteractionEvent event, Guild guild, @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String topicName) {
-        var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), topicName))
-                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(topicName)));
+    public void edit(SlashCommandInteractionEvent event, Guild guild, @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String name) {
+        var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), name))
+                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(name)));
 
-        event.replyModal(createEditorModal(INTERACTION_EDIT + '$' + topicName, topic, TicketTopic.builder()).build()).queue();
+        event.replyModal(createEditorModal(INTERACTION_EDIT + '$' + name, topic, TicketTopic.builder()).build()).queue();
     }
 
     @Command(permission = "17179869184")
     @Description("Delete an existing ticket topic")
-    public MessageCreateData delete(
-            SlashCommandInteractionEvent event, Guild guild,
-            @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String topicName
-    ) {
-        var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), topicName))
-                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(topicName)));
+    public MessageCreateData delete(SlashCommandInteractionEvent event, Guild guild, @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String name) {
+        var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), name))
+                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(name)));
 
         var affectedTicketCount = tickets.countAllByGuildIdAndTopic(guild.getIdLong(), topic);
 
         return new MessageCreateBuilder().addEmbeds(EmbedTemplate.warning("Do you really want to delete topic `%s`?\nThis will affect %d tickets".formatted(
                         topic,
                         affectedTicketCount)).build())
-                .addComponents(ActionRow.of(Button.danger(INTERACTION_DELETE + '$' + topicName, "%s Yes, just do it!".formatted(Constant.EMOJI_DELETE))))
+                .addComponents(ActionRow.of(Button.danger(INTERACTION_DELETE + '$' + name, "%s Yes, just do it!".formatted(Constant.EMOJI_DELETE))))
                 .build();
     }
 
@@ -111,8 +109,10 @@ public class TicketTopicManager extends ListenerAdapter {
         if (!modalId.equals(INTERACTION_CREATE) && !modalId.startsWith(INTERACTION_EDIT)) return;
         var oldName = modalId.startsWith(INTERACTION_EDIT) ? modalId.substring(INTERACTION_EDIT.length() + 1) : null;
 
-        var guild   = Objects.requireNonNull(event.getGuild(), "guild");
-        var builder = oldName == null ? TicketTopic.builder() : topics.findById(new TicketTopic.Key(guild.getIdLong(), oldName)).orElseThrow().toBuilder();
+        var guild = Objects.requireNonNull(event.getGuild(), "guild");
+        var builder = oldName == null
+                      ? TicketTopic.builder().guildId(guild.getIdLong())
+                      : topics.findById(new TicketTopic.Key(guild.getIdLong(), oldName)).orElseThrow().toBuilder();
 
         var topicName = Objects.requireNonNull(event.getValue(OPTION_NAME), "name option").getAsString();
         if (topicName != null && !topicName.isBlank()) builder.name(topicName);
@@ -120,17 +120,19 @@ public class TicketTopicManager extends ListenerAdapter {
         var topicDescription = Objects.requireNonNull(event.getValue(OPTION_DESCRIPTION), "description option").getAsString();
         if (topicDescription != null && !topicDescription.isBlank()) builder.description(topicDescription);
 
-        Objects.requireNonNull(event.getValue(OPTION_HANDLER_ROLE), "handler role option")
+        var handlerRoleId = Objects.requireNonNull(event.getValue(OPTION_HANDLER_ROLE), "handler role option")
                 .getAsMentions()
                 .getRoles()
                 .stream()
                 .findAny()
-                .ifPresent(topicHandlerRole -> builder.handlerRoleId(topicHandlerRole.getIdLong()));
+                .map(ISnowflake::getIdLong)
+                .orElse(0L);
+        builder.handlerRoleId(handlerRoleId);
 
         if (!topicName.equals(oldName)) topics.deleteById(new TicketTopic.Key(guild.getIdLong(), oldName));
         topics.save(builder.build());
 
-        event.replyEmbeds(EmbedTemplate.success("Ticket topic was updated").build()).queue();
+        event.replyEmbeds(EmbedTemplate.success("Ticket topic was updated").build()).setEphemeral(true).queue();
     }
 
     @EventListener
@@ -156,7 +158,10 @@ public class TicketTopicManager extends ListenerAdapter {
                                         .build()),
                         Label.of("Handler Role",
                                 EntitySelectMenu.create(OPTION_HANDLER_ROLE, EntitySelectMenu.SelectTarget.ROLE)
-                                        .setDefaultValues(current == null ? List.of() : List.of(EntitySelectMenu.DefaultValue.role(current.getHandlerRoleId())))
+                                        .setDefaultValues(current == null || current.getHandlerRoleId() == 0
+                                                          ? List.of()
+                                                          : List.of(EntitySelectMenu.DefaultValue.role(current.getHandlerRoleId())))
+                                        .setRequired(false)
                                         .build()));
     }
 }
