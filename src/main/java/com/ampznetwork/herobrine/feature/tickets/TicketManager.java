@@ -107,7 +107,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
         }
 
         // init metadata
-        var topicName   = Objects.requireNonNull(event.getValue(OPTION_TOPIC), "topic option").getAsString();
+        var topicName = Objects.requireNonNull(event.getValue(OPTION_TOPIC), "topic option").getAsStringList().getFirst();
         var topicKey    = new TicketTopic.Key(guild.getIdLong(), topicName);
         var topic       = topics.findById(topicKey).orElse(null);
         var title       = Objects.requireNonNull(event.getValue(OPTION_TITLE), "title option").getAsString();
@@ -125,7 +125,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
             return;
         }
 
-        var nextTicketId = tickets.nextTicketId(guild.getIdLong()).orElse(1);
+        var nextTicketId = nextTicketId(guild);
         event.deferReply(true)
                 .flatMap(hook -> baseChannel.createThreadChannel("ticket-%d-%s".formatted(nextTicketId, event.getUser().getEffectiveName()), true)
                         .setInvitable(true)
@@ -173,6 +173,11 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
         return new MessageCreateBuilder().useComponentsV2()
                 .addComponents(TextDisplay.of("# Ticket by <@%d>".formatted(ticket.getAuthorId())),
                         Container.of(TextDisplay.of("## " + ticket.getTitle()), TextDisplay.of(ticket.getDescription())));
+    }
+
+    private long nextTicketId(Guild guild) {
+        var lastTicketId = tickets.lastTicketId(guild.getIdLong());
+        return lastTicketId == null ? 1 : lastTicketId + 1;
     }
 
     private boolean isPrivileged(Guild guild, TicketConfiguration config, GuildChannel channel, UserSnowflake user, TicketTopic topic) {

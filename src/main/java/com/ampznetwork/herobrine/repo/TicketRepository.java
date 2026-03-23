@@ -3,18 +3,18 @@ package com.ampznetwork.herobrine.repo;
 import com.ampznetwork.herobrine.feature.tickets.model.TicketData;
 import com.ampznetwork.herobrine.feature.tickets.model.TicketTopic;
 import jakarta.transaction.Transactional;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.OptionalLong;
 
 @Repository
 public interface TicketRepository extends CrudRepository<TicketData, TicketData.Key> {
-    @Query("select MAX(td.ticketId) + 1 from TicketData td where td.guildId = :guildId")
-    OptionalLong nextTicketId(long guildId);
+    @Query("select MAX(td.ticketId) from TicketData td where td.guildId = :guildId")
+    @Nullable Long lastTicketId(long guildId);
 
     Optional<TicketData> findByGuildIdAndThreadId(long guildId, long threadId);
 
