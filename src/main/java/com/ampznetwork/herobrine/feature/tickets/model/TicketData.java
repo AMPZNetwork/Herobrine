@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine.feature.tickets.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
@@ -18,7 +19,8 @@ public class TicketData {
     @Id                  long        guildId;
     @Id                  long        ticketId;
     @ManyToOne @Nullable TicketTopic topic;
-    String title, description;
+    String title;
+    @Column(length = 1800) String description;
     long authorId, threadId;
     TicketState state;
 
