@@ -14,17 +14,13 @@ import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
-import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
-import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.IMentionable;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
@@ -33,14 +29,12 @@ import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
-import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
 import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
@@ -50,9 +44,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
-import java.util.stream.Stream;
 
 @Log
 @Service
@@ -83,7 +74,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
         ticket.setState(state);
         tickets.save(ticket);
 
-        var infoMessage = state.toInfoMessage();
+        var infoMessage = ticket.toInfoMessage(config);
         if (infoMessage != null) channel.sendMessage(infoMessage.build()).queue();
 
         return EmbedTemplate.success("State of ticket was updated to `%s`".formatted(state.name()));
@@ -147,7 +138,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
 
                             tickets.save(ticket);
 
-                            return thread.sendMessage(createTicketOpenedMessage(config, ticket).build());
+                            return thread.sendMessage(ticket.toInfoMessage(config).build());
                         })
                         .flatMap($ -> hook.editOriginal("Ticket opened!")))
                 .queue();
@@ -174,14 +165,6 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
                                 TextInput.create(OPTION_DESCRIPTION, TextInputStyle.PARAGRAPH).setPlaceholder("A detailed description on the issue").build()));
     }
 
-    private MessageCreateBuilder createTicketOpenedMessage(TicketConfiguration config, TicketData ticket) {
-        return new MessageCreateBuilder().useComponentsV2()
-                .addComponents(TextDisplay.of("# %s".formatted(ticket)),
-                        Container.of(TextDisplay.of("## " + ticket.getTitle()), TextDisplay.of(ticket.getDescription())),
-                        TextDisplay.of("-# Relevant Mentions: " + mentionables(config, ticket.getTopic()).map(IMentionable::getAsMention)
-                                .collect(Collectors.joining(", "))));
-    }
-
     private long nextTicketId(Guild guild) {
         var lastTicketId = tickets.lastTicketId(guild.getIdLong());
         return lastTicketId == null ? 1 : lastTicketId + 1;
@@ -192,20 +175,10 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
         if (member == null) return false;
 
         final var userId = user.getIdLong();
-        return member.hasPermission(channel, Permission.MANAGE_THREADS) || mentionables(config, topic).flatMap(Streams.expand(role -> guild.getRoles()
-                        .stream()
-                        .filter(other -> role.getPosition() <= other.getPosition())))
+        return member.hasPermission(channel, Permission.MANAGE_THREADS) || TicketData.mentionables(config, topic)
+                .flatMap(Streams.expand(role -> guild.getRoles().stream().filter(other -> role.getPosition() <= other.getPosition())))
                 .flatMap(role -> guild.getMembersWithRoles(role).stream())
                 .mapToLong(ISnowflake::getIdLong)
                 .anyMatch(id -> id == userId);
-    }
-
-    private Stream<Role> mentionables(@Nullable TicketConfiguration config, @Nullable TicketTopic topic) {
-        return LongStream.concat(Stream.ofNullable(config).filter(Objects::nonNull).mapToLong(TicketConfiguration::getTeamRoleId),
-                        Stream.ofNullable(topic).filter(Objects::nonNull).mapToLong(TicketTopic::getHandlerRoleId))
-                .distinct()
-                .filter(id -> id > 0)
-                .mapToObj(jda::getRoleById)
-                .filter(Objects::nonNull);
     }
 }
