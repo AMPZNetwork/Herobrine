@@ -166,7 +166,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
                         Label.of("Title",
                                 TextInput.create(OPTION_TITLE, TextInputStyle.SHORT).setPlaceholder("A short rundown of what this ticket is about").build()),
                         Label.of("Description",
-                                TextInput.create(OPTION_DESCRIPTION, TextInputStyle.PARAGRAPH).setPlaceholder("A detailed description on the issue").build()));
+                                TextInput.create(OPTION_DESCRIPTION, TextInputStyle.PARAGRAPH).setPlaceholder("A detailed description of the issue").build()));
     }
 
     private long nextTicketId(Guild guild) {
