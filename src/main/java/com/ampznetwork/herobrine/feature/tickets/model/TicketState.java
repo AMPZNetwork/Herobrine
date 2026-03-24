@@ -21,7 +21,9 @@ public enum TicketState implements Named {
         public MessageCreateBuilder toInfoMessage(TicketConfiguration config, TicketData ticket) {
             return new MessageCreateBuilder().useComponentsV2()
                     .addComponents(TextDisplay.of("# %#s".formatted(ticket)),
-                            Container.of(TextDisplay.of("## " + ticket.getTitle()), TextDisplay.of(ticket.getDescription())),
+                            ticket.topic == null ? TextDisplay.of("-# This ticket has no topic") : ticket.topic.toInfoContainer(),
+                            TextDisplay.of("#### Ticket Information"),
+                            Container.of(TextDisplay.of("### " + ticket.getTitle()), TextDisplay.of(ticket.getDescription())),
                             TextDisplay.of("-# Relevant Mentions: " + TicketData.mentionables(config, ticket.getTopic())
                                     .map(IMentionable::getAsMention)
                                     .collect(Collectors.joining(", "))));

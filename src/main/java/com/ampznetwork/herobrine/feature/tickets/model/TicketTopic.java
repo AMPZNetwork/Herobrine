@@ -8,7 +8,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.entities.Guild;
 import org.comroid.annotations.Instance;
 import org.comroid.commands.autofill.IAutoFillProvider;
@@ -32,6 +34,12 @@ public class TicketTopic {
 
     public SelectOption toSelectOption() {
         return SelectOption.of(name, name).withDescription(description == null ? null : description.split("\r?\n")[0]);
+    }
+
+    public Container toInfoContainer() {
+        return Container.of(TextDisplay.of("### " + name),
+                TextDisplay.of(description),
+                TextDisplay.of("-# Please make sure to provide all relevant information"));
     }
 
     public enum AutoFill implements IAutoFillProvider {
