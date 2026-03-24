@@ -45,6 +45,7 @@ public class ChannelPlayerListService extends ListenerAdapter {
         if (!playerLists.containsKey(bridge)) return "No player list to clear";
 
         playerLists.remove(bridge).clear();
+
         return "Lists cleared";
     }
 
@@ -58,7 +59,7 @@ public class ChannelPlayerListService extends ListenerAdapter {
         });
 
         playerList.poll(event);
-        playerList.getChannel().getManager().setTopic("**__Online Players__**" + this).queue();
+        playerList.refresh();
     }
 
     @EventListener

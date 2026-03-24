@@ -32,4 +32,8 @@ public class ServerAwarePlayerList implements Clearable {
     public void clear() {
         servers.values().forEach(Clearable::clear);
     }
+
+    public void refresh() {
+        channel.getManager().setTopic("**__Online Players__**" + this).queue();
+    }
 }
