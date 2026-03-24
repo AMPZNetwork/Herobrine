@@ -14,6 +14,7 @@ import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;
 import com.ampznetwork.libmod.api.entity.Player;
 import com.ampznetwork.libmod.api.util.Util;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.Guild;
@@ -31,6 +32,7 @@ import org.comroid.api.net.Rabbit;
 import org.comroid.api.text.Markdown;
 import org.comroid.api.tree.UncheckedCloseable;
 import org.jetbrains.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,7 +46,9 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @Log
 @Value
+@EqualsAndHashCode(of = { "config", "channel" })
 public class LoadedBridge implements UncheckedCloseable {
+    ApplicationEventPublisher publisher;
     ChannelBridgeService                     bridgeService;
     ChannelBridgeConfig                      config;
     TextChannel                              channel;
@@ -60,9 +64,6 @@ public class LoadedBridge implements UncheckedCloseable {
 
         var builder = new WebhookMessageBuilder();
         var msg     = packet.getMessage();
-        var sender  = packet.getMessage().getSender();
-
-        // todo: playerlist - bridgeService.touch(sender);
 
         switch (packet.getPacketType()) {
             case CHAT:
@@ -74,17 +75,14 @@ public class LoadedBridge implements UncheckedCloseable {
                 break;
             case JOIN:
                 builder.setContent("> Joined the game");
-                if (sender == null) break;
-                // todo: playerlist - bridgeService.playerJoin(packet);
+                publisher.publishEvent(new PlayerListEvent(this, packet, PlayerListEvent.Type.JOIN));
                 break;
             case LEAVE:
                 builder.setContent("> Left the game");
-                if (sender == null) break;
-                // todo: playerlist - bridgeService.playerLeave(packet);
+                publisher.publishEvent(new PlayerListEvent(this, packet, PlayerListEvent.Type.LEAVE));
                 break;
             default:
-                builder.setContent(PlainTextComponentSerializer.plainText()
-                        .serialize(packet.getMessage().getFullText()));
+                builder.setContent(PlainTextComponentSerializer.plainText().serialize(packet.getMessage().getFullText()));
                 break;
         }
 
@@ -92,8 +90,7 @@ public class LoadedBridge implements UncheckedCloseable {
         var message = builder.setUsername("[" + Util.Kyori.sanitizePlain(packet.getSource()) + "] " + senderName)
                 .setAvatarUrl("https://mc-heads.net/avatar/" + senderName)
                 .build();
-        obtainWebhook().thenCompose(webhook -> webhook.send(message))
-                .exceptionally(Debug.exceptionLogger("Could not send message"));
+        obtainWebhook().thenCompose(webhook -> webhook.send(message)).exceptionally(Debug.exceptionLogger("Could not send message"));
     }
 
     public void handle(MessageReceivedEvent event) {
@@ -117,9 +114,7 @@ public class LoadedBridge implements UncheckedCloseable {
     }
 
     public void handle(Guild guild, User author, ChatMessageParser.MessageBundle bundle) {
-        var message = new ChatMessage(null,
-                Optional.ofNullable(guild.getMember(author)).map(Member::getEffectiveName).orElseGet(author::getName),
-                bundle);
+        var message = new ChatMessage(null, Optional.ofNullable(guild.getMember(author)).map(Member::getEffectiveName).orElseGet(author::getName), bundle);
         var packet = new ChatMessagePacket(PacketType.CHAT,
                 ChannelBridgeService.ENDPOINT_NAME,
                 config.getName(),
@@ -137,8 +132,7 @@ public class LoadedBridge implements UncheckedCloseable {
         var sb      = new StringBuilder();
         var links = Streams.of(result.get().findAll())
                 .filter(account -> account.getMinecraftId() != null)
-                .collect(Collectors.toMap(account -> String.valueOf(account.getDiscordId()),
-                        account -> Player.fetchUsername(account.getMinecraftId()).join()));
+                .collect(Collectors.toMap(account -> String.valueOf(account.getDiscordId()), account -> Player.fetchUsername(account.getMinecraftId()).join()));
 
         while (matcher.find()) {
             var userId = matcher.group(1);
@@ -158,8 +152,7 @@ public class LoadedBridge implements UncheckedCloseable {
 
         var links = Streams.of(result.get().findAll())
                 .filter(account -> account.getMinecraftId() != null)
-                .collect(Collectors.toMap(account -> Player.fetchUsername(account.getMinecraftId()).join(),
-                        LinkedAccount::getDiscordId));
+                .collect(Collectors.toMap(account -> Player.fetchUsername(account.getMinecraftId()).join(), LinkedAccount::getDiscordId));
 
         for (var mapping : links.entrySet())
             string = string.replaceAll(mapping.getKey(), "<@%d>".formatted(mapping.getValue()));
@@ -167,11 +160,9 @@ public class LoadedBridge implements UncheckedCloseable {
         return string;
     }
 
-    private ChatMessageParser.MessageBundle convertDiscordMessageToComponent(
-            Guild guild, User author, @Nullable Message msg, String contentRaw) {
+    private ChatMessageParser.MessageBundle convertDiscordMessageToComponent(Guild guild, User author, @Nullable Message msg, String contentRaw) {
         var discord = text("DISCORD", BLUE);
-        if (config.inviteUrl != null) discord = discord.hoverEvent(showText(text("Get Invite...")))
-                .clickEvent(openUrl(config.inviteUrl));
+        if (config.inviteUrl != null) discord = discord.hoverEvent(showText(text("Get Invite..."))).clickEvent(openUrl(config.inviteUrl));
 
         var authorColor = Optional.ofNullable(guild.getMember(author))
                 .stream()
@@ -182,8 +173,7 @@ public class LoadedBridge implements UncheckedCloseable {
                 .map(color -> TextColor.color(color.getRGB()))
                 .orElse(WHITE);
         var authorName = text(author.getEffectiveName(), authorColor);
-        if (msg != null) authorName = authorName.hoverEvent(showText(text("Jump to Message...")))
-                .clickEvent(openUrl(msg.getJumpUrl()));
+        if (msg != null) authorName = authorName.hoverEvent(showText(text("Jump to Message..."))).clickEvent(openUrl(msg.getJumpUrl()));
         else authorName = authorName.hoverEvent(showText(text("Message was shouted; cannot jump", RED)));
 
         var bundle = com.ampznetwork.chatmod.api.parse.ChatMessageParser.parse(contentRaw,
@@ -217,8 +207,7 @@ public class LoadedBridge implements UncheckedCloseable {
                         .filter(webhook -> ChatModules.DiscordProviderConfig.WEBHOOK_NAME.equals(webhook.getName()))
                         .findAny()
                         .map(CompletableFuture::completedFuture)
-                        .orElseGet(() -> channel.createWebhook(ChatModules.DiscordProviderConfig.WEBHOOK_NAME)
-                                .submit()))
+                        .orElseGet(() -> channel.createWebhook(ChatModules.DiscordProviderConfig.WEBHOOK_NAME).submit()))
                 .thenApply(webhook -> WebhookClientBuilder.fromJDA(webhook).build());
     }
 }

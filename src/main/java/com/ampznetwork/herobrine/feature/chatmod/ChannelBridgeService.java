@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -56,9 +57,10 @@ public class ChannelBridgeService extends ListenerAdapter {
         }
     };
 
-    @Autowired JDA                     jda;
-    @Autowired ChannelBridgeConfigRepo channelBridges;
-    @Autowired JacksonPacketConverter  packetConverter;
+    @Autowired JDA                       jda;
+    @Autowired ChannelBridgeConfigRepo   channelBridges;
+    @Autowired JacksonPacketConverter    packetConverter;
+    @Autowired ApplicationEventPublisher publisher;
 
     private final Collection<LoadedBridge>                                     loaded         = new HashSet<>();
     private final Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
@@ -77,21 +79,18 @@ public class ChannelBridgeService extends ListenerAdapter {
         }
 
         // load channel bridges
-        for (var config : guild == null
-                          ? channelBridges.findAll()
-                          : channelBridges.findAllByGuildId(guild.getIdLong())) {
+        for (var config : guild == null ? channelBridges.findAll() : channelBridges.findAllByGuildId(guild.getIdLong())) {
             var key = "chat." + config.getChannelName();
 
             var channel = jda.getTextChannelById(config.getChannelId());
-            if (channel == null)
-                throw new CommandError("Could not find text channel by id: `%d`".formatted(config.getChannelId()));
+            if (channel == null) throw new CommandError("Could not find text channel by id: `%d`".formatted(config.getChannelId()));
 
             var route = Rabbit.of("ChatMod Channel Bridge", config.getRabbitUri())
                     .assertion("Could not instantiate Rabbit")
                     .exchange("minecraft", "topic")
                     .route("herobrine." + key, key, packetConverter);
 
-            var bridge = new LoadedBridge(this, config, channel, route);
+            var bridge = new LoadedBridge(publisher, this, config, channel, route);
 
             route.subscribeData(bridge::handle);
             loaded.add(bridge);
@@ -123,13 +122,10 @@ public class ChannelBridgeService extends ListenerAdapter {
     @Description("Shout a message into a specific channel")
     public void shout(
             Guild guild, User user,
-            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description(
-                    "The channel to shout into") String channel,
+            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description("The channel to shout into") String channel,
             @Command.Arg(stringMode = StringMode.GREEDY) @Description("The message to shout") String message
     ) {
-        loaded.stream()
-                .filter(bridge -> bridge.getConfig().getChannelName().equals(channel))
-                .forEach(bridge -> bridge.handle(guild, user, message));
+        loaded.stream().filter(bridge -> bridge.getConfig().getChannelName().equals(channel)).forEach(bridge -> bridge.handle(guild, user, message));
     }
 
     @Override
