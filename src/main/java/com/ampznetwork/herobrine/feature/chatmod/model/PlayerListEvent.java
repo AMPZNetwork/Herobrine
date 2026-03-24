@@ -19,6 +19,6 @@ public class PlayerListEvent extends ApplicationEvent {
     }
 
     public enum Type {
-        JOIN, LEAVE
+        SYNC, JOIN, LEAVE
     }
 }

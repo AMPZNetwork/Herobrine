@@ -5,10 +5,15 @@ import com.ampznetwork.herobrine.feature.chatmod.model.PlayerListEvent;
 import com.ampznetwork.herobrine.feature.chatmod.model.ServerAwarePlayerList;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import org.comroid.annotations.Description;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
+import org.comroid.commands.model.CommandError;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -22,10 +27,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @Log
 @Service
 @Command("playerlist")
+@ConditionalOnBean(ChannelBridgeService.class)
 public class ChannelPlayerListService extends ListenerAdapter {
     private final Map<LoadedBridge, ServerAwarePlayerList> playerLists = new ConcurrentHashMap<>();
 
-    @Autowired JDA jda;
+    @Autowired JDA                  jda;
+    @Autowired ChannelBridgeService bridgeService;
+
+    @Command(permission = "8192")
+    @Description("Clear player lists for this channel")
+    public String clear(Guild guild, TextChannel channel) {
+        var bridge = bridgeService.getLoaded().stream().filter(it -> {
+            var config = it.getConfig();
+            return config.getGuildId() == guild.getIdLong() && config.getChannelId() == channel.getIdLong();
+        }).findAny().orElseThrow(() -> new CommandError("Not in a bridged channel"));
+
+        if (!playerLists.containsKey(bridge)) return "No player list to clear";
+
+        playerLists.remove(bridge).clear();
+        return "Lists cleared";
+    }
 
     @EventListener
     public void on(PlayerListEvent event) {

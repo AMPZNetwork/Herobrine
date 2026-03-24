@@ -6,6 +6,7 @@ import com.ampznetwork.herobrine.feature.chatmod.model.GuildChannelNameAutoFillP
 import com.ampznetwork.herobrine.feature.chatmod.model.LoadedBridge;
 import com.ampznetwork.herobrine.feature.chatmod.protocol.JacksonPacketConverter;
 import com.ampznetwork.herobrine.repo.ChannelBridgeConfigRepo;
+import lombok.Getter;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -62,8 +63,8 @@ public class ChannelBridgeService extends ListenerAdapter {
     @Autowired JacksonPacketConverter    packetConverter;
     @Autowired ApplicationEventPublisher publisher;
 
-    private final Collection<LoadedBridge>                                     loaded         = new HashSet<>();
-    private final Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
+    private final @Getter Collection<LoadedBridge>                                     loaded         = new HashSet<>();
+    private final         Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
 
     public @Nullable Rabbit.Exchange.Route<ChatMessagePacket> getSystemChannel(long guildId) {
         return systemChannels.getOrDefault(guildId, null);

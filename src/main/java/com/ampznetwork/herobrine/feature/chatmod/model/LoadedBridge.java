@@ -72,6 +72,7 @@ public class LoadedBridge implements UncheckedCloseable {
                 var string = sb.toString();
                 string = convertMentions_MinecraftToDiscord(string);
                 builder.setContent(string);
+                publisher.publishEvent(new PlayerListEvent(this, packet, PlayerListEvent.Type.SYNC));
                 break;
             case JOIN:
                 builder.setContent("> Joined the game");

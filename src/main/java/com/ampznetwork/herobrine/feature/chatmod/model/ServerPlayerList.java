@@ -1,6 +1,7 @@
 package com.ampznetwork.herobrine.feature.chatmod.model;
 
 import lombok.Value;
+import org.comroid.api.func.Clearable;
 
 import java.util.Map;
 import java.util.UUID;
@@ -8,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Value
-public class ServerPlayerList {
+public class ServerPlayerList implements Clearable {
     String            serverName;
     Map<UUID, String> players = new ConcurrentHashMap<>();
 
@@ -38,5 +39,10 @@ public class ServerPlayerList {
     @Override
     public String toString() {
         return players.values().stream().collect(Collectors.joining("\n- ", "- ", ""));
+    }
+
+    @Override
+    public void clear() {
+        players.clear();
     }
 }
