@@ -31,7 +31,7 @@ public class TicketTopic {
     long   handlerRoleId;
 
     public SelectOption toSelectOption() {
-        return SelectOption.of(name, name).withDescription(description);
+        return SelectOption.of(name, name).withDescription(description == null ? null : description.split("\r?\n")[0]);
     }
 
     public enum AutoFill implements IAutoFillProvider {
