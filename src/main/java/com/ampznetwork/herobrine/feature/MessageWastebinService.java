@@ -2,12 +2,10 @@ package com.ampznetwork.herobrine.feature;
 
 import com.ampznetwork.herobrine.util.Constant;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.commands.impl.CommandManager;
 import org.jspecify.annotations.NonNull;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -18,16 +16,16 @@ import org.springframework.stereotype.Component;
 
 @Log
 @Component
-public class MessageWastebinService extends ListenerAdapter {
-    @Override
-    public void onMessageReceived(@NonNull MessageReceivedEvent event) {
+public class MessageWastebinService {
+    @EventListener
+    public void on(@NonNull MessageReceivedEvent event) {
         if (!(event.getAuthor() instanceof SelfUser)) return;
 
         event.getMessage().addReaction(Constant.EMOJI_DELETE).queue();
     }
 
-    @Override
-    public void onMessageReactionAdd(@NonNull MessageReactionAddEvent event) {
+    @EventListener
+    public void on(@NonNull MessageReactionAddEvent event) {
         var member = event.getMember();
 
         if (!event.getReaction().getEmoji().equals(Constant.EMOJI_DELETE)) return;
@@ -48,7 +46,6 @@ public class MessageWastebinService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

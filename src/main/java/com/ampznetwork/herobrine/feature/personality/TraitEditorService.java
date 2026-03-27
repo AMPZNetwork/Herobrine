@@ -13,7 +13,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.attachmentupload.AttachmentUpload;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -30,7 +29,6 @@ import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.RestAction;
@@ -61,10 +59,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+
 @Log
 @Service
 @ConditionalOnBean({ PersonalityTraitService.class })
-public class TraitEditorService extends ListenerAdapter implements ErrorLogSender, AuditLogSender {
+public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     public static final String INTERACTION_EDIT_TRIGGER  = "personality_trait_edit_trigger";
     public static final String INTERACTION_EDIT_FILTER   = "personality_trait_edit_filter";
     public static final String INTERACTION_EDIT_RANDOM   = "personality_trait_edit_random";
@@ -91,14 +90,13 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
     }
 
-    @Override
-    public void onButtonInteraction(@NonNull ButtonInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull ButtonInteractionEvent event) {
         if (!List.of(INTERACTION_EDIT_TRIGGER,
                 INTERACTION_EDIT_FILTER,
                 INTERACTION_EDIT_RANDOM,
@@ -161,8 +159,8 @@ public class TraitEditorService extends ListenerAdapter implements ErrorLogSende
         }
     }
 
-    @Override
-    public void onModalInteraction(@NonNull ModalInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull ModalInteractionEvent event) {
         if (!List.of(INTERACTION_EDIT_TRIGGER,
                 INTERACTION_EDIT_FILTER,
                 INTERACTION_EDIT_RANDOM,

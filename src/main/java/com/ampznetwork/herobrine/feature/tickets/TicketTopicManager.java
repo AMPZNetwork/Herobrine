@@ -6,7 +6,6 @@ import com.ampznetwork.herobrine.repo.TicketTopicRepository;
 import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.EmbedTemplate;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -18,7 +17,6 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
@@ -41,7 +39,7 @@ import java.util.Objects;
 @Log
 @Service
 @Command("ticket-topic")
-public class TicketTopicManager extends ListenerAdapter {
+public class TicketTopicManager {
     public static final String INTERACTION_CREATE  = "ticket_topic_create";
     public static final String INTERACTION_EDIT    = "ticket_topic_edit";
     public static final String INTERACTION_DELETE  = "ticket_topic_delete";
@@ -82,8 +80,8 @@ public class TicketTopicManager extends ListenerAdapter {
                 .build();
     }
 
-    @Override
-    public void onButtonInteraction(@NonNull ButtonInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull ButtonInteractionEvent event) {
         var componentId = event.getComponentId();
         if (!componentId.startsWith(INTERACTION_DELETE)) return;
 
@@ -102,8 +100,8 @@ public class TicketTopicManager extends ListenerAdapter {
         }
     }
 
-    @Override
-    public void onModalInteraction(@NonNull ModalInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull ModalInteractionEvent event) {
         var modalId = event.getModalId();
 
         if (!modalId.equals(INTERACTION_CREATE) && !modalId.startsWith(INTERACTION_EDIT)) return;
@@ -138,7 +136,6 @@ public class TicketTopicManager extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

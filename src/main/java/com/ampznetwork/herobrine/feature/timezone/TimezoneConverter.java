@@ -4,14 +4,12 @@ import com.ampznetwork.herobrine.model.UserPreferences;
 import com.ampznetwork.herobrine.repo.UserPreferenceRepo;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
 import org.comroid.commands.Command;
@@ -40,7 +38,7 @@ import java.util.regex.Pattern;
 @Component
 @Command("time")
 @Description("Set your timezone preferences")
-public class TimezoneConverter extends ListenerAdapter {
+public class TimezoneConverter {
     public static final DateTimeFormatter FORMATTER    = DateTimeFormatter.ofPattern("HH:mm");
     public static final Emoji             EMOJI        = Emoji.fromUnicode("⏰"); // ⏰
     public static final Pattern           TIME_PATTERN = Pattern.compile(
@@ -64,8 +62,8 @@ public class TimezoneConverter extends ListenerAdapter {
         return "%s Your timezone was set to `%s`".formatted(EMOJI, zone);
     }
 
-    @Override
-    public void onMessageReceived(MessageReceivedEvent event) {
+    @EventListener
+    public void on(MessageReceivedEvent event) {
         if (event.isWebhookMessage() || event.getAuthor().isBot() || event.getAuthor().isSystem()) return;
 
         var message = event.getMessage();
@@ -80,8 +78,8 @@ public class TimezoneConverter extends ListenerAdapter {
         if (any) message.addReaction(EMOJI).queue();
     }
 
-    @Override
-    public void onMessageReactionAdd(MessageReactionAddEvent event) {
+    @EventListener
+    public void on(MessageReactionAddEvent event) {
         if (!event.getReaction().getEmoji().equals(EMOJI)) return;
 
         var message  = event.retrieveMessage().complete();
@@ -177,7 +175,6 @@ public class TimezoneConverter extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

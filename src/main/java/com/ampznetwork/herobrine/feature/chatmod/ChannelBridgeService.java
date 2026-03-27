@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.net.Rabbit;
 import org.comroid.api.text.StringMode;
@@ -39,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Log
 @Service
 @Command("chat")
-public class ChannelBridgeService extends ListenerAdapter {
+public class ChannelBridgeService {
     public static final String        ENDPOINT_NAME   = "discord";
     public static final ChatModConfig CHAT_MOD_CONFIG = new ChatModConfig() {
         @Override
@@ -129,8 +128,8 @@ public class ChannelBridgeService extends ListenerAdapter {
         loaded.stream().filter(bridge -> bridge.getConfig().getChannelName().equals(channel)).forEach(bridge -> bridge.handle(guild, user, message));
     }
 
-    @Override
-    public void onMessageReceived(@NonNull MessageReceivedEvent event) {
+    @EventListener
+    public void on(@NonNull MessageReceivedEvent event) {
         var guild   = event.getGuild();
         var channel = event.getChannel();
 
@@ -144,7 +143,6 @@ public class ChannelBridgeService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         reload(null);

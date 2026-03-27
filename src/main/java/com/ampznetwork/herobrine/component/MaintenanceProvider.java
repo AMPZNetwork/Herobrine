@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine.component;
 
+import com.ampznetwork.herobrine.component.discord.DiscordProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;

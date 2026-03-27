@@ -27,7 +27,6 @@ import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.modals.Modal;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
@@ -48,7 +47,7 @@ import java.util.logging.Level;
 @Log
 @Service
 @Command("ticket")
-public class TicketManager extends ListenerAdapter implements AuditLogSender, ErrorLogSender {
+public class TicketManager implements AuditLogSender, ErrorLogSender {
     public static final String INTERACTION_OPEN   = "tickets_open";
     public static final String OPTION_TOPIC       = "tickets_option_topic";
     public static final String OPTION_TITLE       = "tickets_option_title";
@@ -95,7 +94,7 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
         event.replyModal(createOpenTicketModal(guild).build()).queue();
     }
 
-    @Override
+    @EventListener
     public void onModalInteraction(@NonNull ModalInteractionEvent event) {
         if (!event.getModalId().equals(INTERACTION_OPEN)) return;
 
@@ -151,7 +150,6 @@ public class TicketManager extends ListenerAdapter implements AuditLogSender, Er
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

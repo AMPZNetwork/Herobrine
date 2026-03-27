@@ -11,7 +11,6 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
@@ -34,7 +33,7 @@ import java.util.logging.Level;
 @Command("errorlog")
 @org.comroid.annotations.Order(-10)
 @Description("Configure internal Error Log")
-public class ErrorLogService extends ListenerAdapter implements CommandErrorHandler {
+public class ErrorLogService implements CommandErrorHandler {
     @Autowired ErrorLogPreferenceRepo prefRepo;
     @Autowired JDA                    jda;
 
@@ -98,8 +97,6 @@ public class ErrorLogService extends ListenerAdapter implements CommandErrorHand
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-
         var cmdr = event.getApplicationContext().getBean(CommandManager.class);
         cmdr.register(this);
         cmdr.addChild(this);

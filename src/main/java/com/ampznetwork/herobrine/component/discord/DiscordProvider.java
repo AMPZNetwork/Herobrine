@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component;
+package com.ampznetwork.herobrine.component.discord;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;
@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
@@ -31,22 +32,23 @@ public class DiscordProvider extends ListenerAdapter {
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
     /** this field exists to control lifecycle */
-    @Autowired ApplicationContextProvider context;
-    @Lazy @Autowired Event.Bus<GenericEvent> jdaEventBus;
+    @Autowired       ApplicationContextProvider context;
+    @Autowired       ApplicationEventPublisher  publisher;
+    @Lazy @Autowired Event.Bus<GenericEvent>    jdaEventBus;
 
     @Override
     public void onGenericEvent(@NotNull GenericEvent event) {
         jdaEventBus.accept(event);
+        publisher.publishEvent(event);
     }
 
     @Bean
     public JDA jda(@Autowired Config config) throws InterruptedException {
-        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS))
-                .build()
-                .awaitReady();
+        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS)).build().awaitReady();
     }
 
     @Bean
+    @Deprecated
     public Event.Bus<GenericEvent> jdaEventBus() {
         return new Event.Bus<>();
     }

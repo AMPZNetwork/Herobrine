@@ -5,10 +5,8 @@ import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.libmod.api.entity.Player;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
@@ -26,7 +24,7 @@ import java.util.concurrent.CompletableFuture;
 @Log
 @Service
 @Command("linkadmin")
-public class AccountLinkAdminService extends ListenerAdapter {
+public class AccountLinkAdminService {
     @Autowired MaintenanceProvider     maintenance;
     @Autowired LinkedAccountRepository accounts;
 
@@ -67,7 +65,6 @@ public class AccountLinkAdminService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

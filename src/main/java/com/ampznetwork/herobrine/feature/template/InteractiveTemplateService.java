@@ -19,7 +19,6 @@ import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.MessageBulkDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.FileUpload;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -56,7 +55,7 @@ import java.util.regex.Pattern;
 @Component
 @Command("template")
 @ConditionalOnBean({ MessageTemplateEngine.class })
-public class InteractiveTemplateService extends ListenerAdapter {
+public class InteractiveTemplateService {
     private static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
     private static final Pattern SHORTCUT_APPEND_LINE = Pattern.compile("\\+(\\d+) ([^\n]+)");
     private static final Pattern SHORTCUT_EDIT_LINE   = Pattern.compile("#(\\d+) ([^\n]+)");
@@ -82,8 +81,8 @@ public class InteractiveTemplateService extends ListenerAdapter {
         });
     }
 
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+    @EventListener
+    public void on(@NotNull MessageReceivedEvent event) {
         var message = event.getMessage();
 
         var result = findInteractiveMode(event.getChannel(), event.getAuthor());
@@ -128,20 +127,19 @@ public class InteractiveTemplateService extends ListenerAdapter {
         message.delete().flatMap($ -> detail.refresh(event)).queue();
     }
 
-    @Override
-    public void onMessageDelete(@NonNull MessageDeleteEvent event) {
+    @EventListener
+    public void on(@NonNull MessageDeleteEvent event) {
         handleMessageDelete(event.getMessageIdLong());
     }
 
-    @Override
-    public void onMessageBulkDelete(@NonNull MessageBulkDeleteEvent event) {
+    @EventListener
+    public void on(@NonNull MessageBulkDeleteEvent event) {
         event.getMessageIds().stream().mapToLong(Long::parseLong).forEach(this::handleMessageDelete);
     }
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

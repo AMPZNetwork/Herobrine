@@ -9,7 +9,6 @@ import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -26,7 +25,6 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
@@ -57,7 +55,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Command("chatbridge")
 @ConditionalOnBean(ChannelBridgeService.class)
-public class ChannelBridgeEditorService extends ListenerAdapter {
+public class ChannelBridgeEditorService {
     public static final String INTERACTION_EDIT_CHANNEL      = "cbe_edit_channel";
     public static final String INTERACTION_EDIT_RABBIT_URI   = "cbe_edit_rabbit_uri";
     public static final String INTERACTION_EDIT_CHANNEL_NAME = "cbe_edit_channel_name";
@@ -65,13 +63,13 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
     public static final String INTERACTION_EDIT_INVITE_URL   = "cbe_edit_invite_url";
     public static final String INTERACTION_SUBMIT            = "cbe_submit";
 
-    public static final String OPTION_DISCORD_CHANNEL = "cbe_option_channel_id";
-    public static final String OPTION_RABBIT_URI      = "cbe_option_rabbit_uri";
-    public static final String OPTION_CHATMOD_CHANNEL = "cbe_option_channel_name";
-    public static final String OPTION_DISPLAY_NAME    = "cbe_option_display_name";
-    public static final String OPTION_INVITE_URL      = "cbe_option_invite_url";
-    private final Map<GuildUserKey, Session> sessions = new ConcurrentHashMap<>();
-    @Autowired ChannelBridgeConfigRepo channelBridges;
+    public static final String                     OPTION_DISCORD_CHANNEL = "cbe_option_channel_id";
+    public static final String                     OPTION_RABBIT_URI      = "cbe_option_rabbit_uri";
+    public static final String                     OPTION_CHATMOD_CHANNEL = "cbe_option_channel_name";
+    public static final String                     OPTION_DISPLAY_NAME    = "cbe_option_display_name";
+    public static final String                     OPTION_INVITE_URL      = "cbe_option_invite_url";
+    private final       Map<GuildUserKey, Session> sessions               = new ConcurrentHashMap<>();
+    @Autowired          ChannelBridgeConfigRepo    channelBridges;
 
     /** todo: autofill channel name by seen channel names */
     @Command(permission = "16")
@@ -84,8 +82,7 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
     @Description("Create a new channel bridge mapping")
     public void edit(
             Guild guild, MessageChannel messageChannel, UserSnowflake user,
-            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description(
-                    "The chat channel mapping to edit") String name
+            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description("The chat channel mapping to edit") String name
     ) {
         var bridge = channelBridges.findByGuildIdAndChannelName(guild.getIdLong(), name)
                 .orElseThrow(() -> new CommandError("Could not find channel bridge by guild id %d and channel name %s"));
@@ -93,8 +90,8 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
         openEditor(guild, messageChannel, user, bridge.toBuilder()).queue();
     }
 
-    @Override
-    public void onButtonInteraction(@NonNull ButtonInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull ButtonInteractionEvent event) {
         if (!List.of(INTERACTION_EDIT_CHANNEL,
                 INTERACTION_EDIT_RABBIT_URI,
                 INTERACTION_EDIT_CHANNEL_NAME,
@@ -124,8 +121,8 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
         }
     }
 
-    @Override
-    public void onModalInteraction(@NonNull ModalInteractionEvent event) {
+    @EventListener
+    public void on(ModalInteractionEvent event) {
         if (!List.of(INTERACTION_EDIT_CHANNEL,
                 INTERACTION_EDIT_RABBIT_URI,
                 INTERACTION_EDIT_CHANNEL_NAME,
@@ -182,16 +179,12 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
     }
 
-    private RestAction<?> openEditor(
-            Guild guild, MessageChannel channel, UserSnowflake user,
-            ChannelBridgeConfig.Builder builder
-    ) {
+    private RestAction<?> openEditor(Guild guild, MessageChannel channel, UserSnowflake user, ChannelBridgeConfig.Builder builder) {
         var key     = new GuildUserKey(guild, user);
         var session = new Session(builder, user, channel, null);
 
@@ -218,8 +211,7 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
         return Modal.create(INTERACTION_EDIT_CHANNEL, "Select Channel for the chat bridge")
                 .addComponents(Label.of("Select Channel",
                         EntitySelectMenu.create(OPTION_DISCORD_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
-                                .setDefaultValues(EntitySelectMenu.DefaultValue.channel(session.builder.build()
-                                        .getChannelId()))
+                                .setDefaultValues(EntitySelectMenu.DefaultValue.channel(session.builder.build().getChannelId()))
                                 .build()));
     }
 
@@ -227,10 +219,7 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
         var value = event.getValue(optionId);
 
         if (value == null) {
-            event.reply("%s No value was found".formatted(Constant.EMOJI_WARNING))
-                    .delay(5, TimeUnit.SECONDS)
-                    .flatMap(InteractionHook::deleteOriginal)
-                    .queue();
+            event.reply("%s No value was found".formatted(Constant.EMOJI_WARNING)).delay(5, TimeUnit.SECONDS).flatMap(InteractionHook::deleteOriginal).queue();
             return null;
         }
 
@@ -240,17 +229,13 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
     private Modal.Builder createEditRabbitUriModal(Session session) {
         return Modal.create(INTERACTION_EDIT_RABBIT_URI, "Set RabbitMQ URI")
                 .addComponents(Label.of("RabbitMQ URI",
-                        TextInput.create(OPTION_RABBIT_URI, TextInputStyle.SHORT)
-                                .setValue(session.builder.build().getRabbitUri())
-                                .build()));
+                        TextInput.create(OPTION_RABBIT_URI, TextInputStyle.SHORT).setValue(session.builder.build().getRabbitUri()).build()));
     }
 
     private Modal.Builder createEditChannelNameModal(Session session) {
         return Modal.create(INTERACTION_EDIT_CHANNEL_NAME, "Set chat channel name")
                 .addComponents(Label.of("Channel Name",
-                        TextInput.create(OPTION_CHATMOD_CHANNEL, TextInputStyle.SHORT)
-                                .setValue(session.builder.build().getChannelName())
-                                .build()));
+                        TextInput.create(OPTION_CHATMOD_CHANNEL, TextInputStyle.SHORT).setValue(session.builder.build().getChannelName()).build()));
     }
 
     private Modal.Builder createEditDisplayNameModal(Session session) {
@@ -265,10 +250,7 @@ public class ChannelBridgeEditorService extends ListenerAdapter {
     private Modal.Builder createEditInviteUrlModal(Session session) {
         return Modal.create(INTERACTION_EDIT_RABBIT_URI, "Set custom Invite URL")
                 .addComponents(Label.of("Invite URL",
-                        TextInput.create(OPTION_INVITE_URL, TextInputStyle.SHORT)
-                                .setValue(session.builder.build().getInviteUrl())
-                                .setRequired(false)
-                                .build()));
+                        TextInput.create(OPTION_INVITE_URL, TextInputStyle.SHORT).setValue(session.builder.build().getInviteUrl()).setRequired(false).build()));
     }
 
     @Value

@@ -7,11 +7,9 @@ import com.ampznetwork.herobrine.repo.TicketConfigurationRepository;
 import com.ampznetwork.herobrine.util.EmbedTemplate;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
@@ -26,7 +24,7 @@ import org.springframework.stereotype.Service;
 @Log
 @Service
 @Command("ticket-admin")
-public class TicketConfigurer extends ListenerAdapter implements AuditLogSender, ErrorLogSender {
+public class TicketConfigurer implements AuditLogSender, ErrorLogSender {
     @Autowired TicketConfigurationRepository configs;
 
     @Command(permission = "16")
@@ -53,7 +51,6 @@ public class TicketConfigurer extends ListenerAdapter implements AuditLogSender,
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

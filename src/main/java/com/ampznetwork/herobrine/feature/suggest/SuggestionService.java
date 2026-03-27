@@ -1,9 +1,7 @@
 package com.ampznetwork.herobrine.feature.suggest;
 
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Debug;
@@ -18,7 +16,7 @@ import org.springframework.stereotype.Component;
 
 @Log
 @Component
-public class SuggestionService extends ListenerAdapter {
+public class SuggestionService {
     public static final long CHANNEL_ID = Debug.isDebug() ? 1141990824167624734L : 1440076272263893113L;
 
     @Command("suggest")
@@ -43,7 +41,6 @@ public class SuggestionService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

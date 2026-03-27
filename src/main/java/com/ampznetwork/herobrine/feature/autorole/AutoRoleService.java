@@ -7,13 +7,11 @@ import com.ampznetwork.herobrine.trigger.DiscordTrigger;
 import lombok.Value;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.guild.member.GenericGuildMemberEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Event;
 import org.comroid.commands.Command;
@@ -21,7 +19,6 @@ import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -33,9 +30,9 @@ import java.util.function.Consumer;
 @Service
 @Command("autorole")
 @Description("Configure automatically assigned roles")
-public class AutoRoleService extends ListenerAdapter implements AuditLogSender {
-    @Autowired       AutoRoleRepository      repo;
-    @Lazy @Autowired Event.Bus<GenericEvent> jdaEventBus;
+public class AutoRoleService implements AuditLogSender {
+    @Autowired AutoRoleRepository      repo;
+    @Autowired Event.Bus<GenericEvent> jdaEventBus;
 
     @Command(permission = "268435456")
     @Description("List all currently configured automated roles")
@@ -51,8 +48,7 @@ public class AutoRoleService extends ListenerAdapter implements AuditLogSender {
     @Description("Create a new mapping for an automated role")
     public String create(
             Guild guild, Member member, @Command.Arg @Description("The role to use for the automation") Role role,
-            @Command.Arg(autoFillProvider = DiscordTrigger.AutoFillNames.class) @Description(
-                    "The trigger to use for the automation") String trigger
+            @Command.Arg(autoFillProvider = DiscordTrigger.AutoFillNames.class) @Description("The trigger to use for the automation") String trigger
     ) {
         if (repo.existsById(new AutoRoleMapping.Key(guild.getIdLong(), role.getIdLong())))
             throw new CommandError("Automation for role %s already exists".formatted(role));
@@ -62,18 +58,11 @@ public class AutoRoleService extends ListenerAdapter implements AuditLogSender {
         if (!GenericGuildMemberEvent.class.isAssignableFrom(triggerResult.getEventType()))
             throw new CommandError("This trigger is incompatible as a role automation");
 
-        var mapping = AutoRoleMapping.builder()
-                .guildId(guild.getIdLong())
-                .roleId(role.getIdLong())
-                .discordTrigger(triggerResult);
+        var mapping = AutoRoleMapping.builder().guildId(guild.getIdLong()).roleId(role.getIdLong()).discordTrigger(triggerResult);
 
         var autoRoleMapping = mapping.build();
 
-        audit().newEntry()
-                .guild(guild)
-                .source(this)
-                .message("%s is creating an automation for role %s, based on %s".formatted(member, role, trigger))
-                .queue();
+        audit().newEntry().guild(guild).source(this).message("%s is creating an automation for role %s, based on %s".formatted(member, role, trigger)).queue();
         repo.save(autoRoleMapping);
         initialize(autoRoleMapping);
 
@@ -82,19 +71,12 @@ public class AutoRoleService extends ListenerAdapter implements AuditLogSender {
 
     @Command(permission = "268435456")
     @Description("Remove a mapping for an automated role")
-    public String remove(
-            Guild guild, Member member,
-            @Command.Arg @Description("The role to remove from automations") Role role
-    ) {
+    public String remove(Guild guild, Member member, @Command.Arg @Description("The role to remove from automations") Role role) {
         var key = new AutoRoleMapping.Key(guild.getIdLong(), role.getIdLong());
 
         if (!repo.existsById(key)) throw new CommandError("Mapping for role %s was not found".formatted(role));
 
-        audit().newEntry()
-                .guild(guild)
-                .source(this)
-                .message("%s is removing an automation for role %s".formatted(member, role))
-                .queue();
+        audit().newEntry().guild(guild).source(this).message("%s is removing an automation for role %s".formatted(member, role)).queue();
         repo.deleteById(key);
         return "Automation for role %s was deleted".formatted(role);
     }
@@ -107,7 +89,6 @@ public class AutoRoleService extends ListenerAdapter implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         for (var entry : repo.findAll()) initialize(entry);

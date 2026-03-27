@@ -18,7 +18,6 @@ import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
@@ -46,7 +45,7 @@ import java.util.logging.Level;
 @Log
 @Service
 @Command("link_role")
-public class LinkRoleAssignmentService extends ListenerAdapter implements AuditLogSender {
+public class LinkRoleAssignmentService implements AuditLogSender {
     @Autowired JDA                      jda;
     @Autowired LinkRoleConfigRepository linkRoleConfigs;
     @Autowired LinkedAccountRepository  linkedAccounts;
@@ -124,9 +123,7 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
             var actionTree = new HashMap<Role, Map<Action, List<ActionTaken>>>();
             for (var action : actions)
-                actionTree.computeIfAbsent(action.role, $ -> new HashMap<>())
-                        .computeIfAbsent(action.action, $ -> new ArrayList<>())
-                        .add(action);
+                actionTree.computeIfAbsent(action.role, $ -> new HashMap<>()).computeIfAbsent(action.action, $ -> new ArrayList<>()).add(action);
 
             var message = new MessageCreateBuilder().useComponentsV2().addComponents(TextDisplay.of("# Actions taken"));
 
@@ -136,11 +133,7 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
                 roleTextBlock.add(TextDisplay.of("## Role %s".formatted(role)));
 
-                for (var perAction : perRole.getValue()
-                        .entrySet()
-                        .stream()
-                        .sorted(Comparator.comparingInt(entry -> entry.getKey().ordinal()))
-                        .toList()) {
+                for (var perAction : perRole.getValue().entrySet().stream().sorted(Comparator.comparingInt(entry -> entry.getKey().ordinal())).toList()) {
                     var actionTextBlock = new ArrayList<ContainerChildComponent>();
 
                     actionTextBlock.add(TextDisplay.of("### %s Members".formatted(perAction.getKey().name())));
@@ -178,10 +171,7 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
             config.setMinecraftRoleId(0);
         } else {
-            if (config == null) config = LinkRoleConfiguration.builder()
-                    .guildId(guild.getIdLong())
-                    .minecraftRoleId(role.getIdLong())
-                    .build();
+            if (config == null) config = LinkRoleConfiguration.builder().guildId(guild.getIdLong()).minecraftRoleId(role.getIdLong()).build();
             else config.setMinecraftRoleId(role.getIdLong());
         }
 
@@ -189,8 +179,16 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
         return "Configuration updated";
     }
 
-    @Override
-    public void onGuildMemberRoleAdd(@NonNull GuildMemberRoleAddEvent event) {
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) {
+        event.getApplicationContext().getBean(CommandManager.class).register(this);
+
+        log.info("Initialized");
+    }
+
+    @EventListener
+    public void on(@NonNull GuildMemberRoleAddEvent event) {
         if (event.getRoles().size() != 1) return;
         var role = event.getRoles().getFirst();
 
@@ -207,22 +205,9 @@ public class LinkRoleAssignmentService extends ListenerAdapter implements AuditL
 
         newAuditEntry().guild(guild)
                 .level(Level.WARNING)
-                .message("%s was assigned role %s, but they don't have their %s account linked".formatted(user,
-                        role,
-                        type))
+                .message("%s was assigned role %s, but they don't have their %s account linked".formatted(user, role, type))
                 .queue();
-        guild.removeRoleFromMember(user, role)
-                .reason("User does not have their %s account linked".formatted(type))
-                .queue();
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
-
-        log.info("Initialized");
+        guild.removeRoleFromMember(user, role).reason("User does not have their %s account linked".formatted(type)).queue();
     }
 
     @EventListener

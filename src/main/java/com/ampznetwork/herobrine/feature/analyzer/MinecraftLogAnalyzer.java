@@ -10,12 +10,10 @@ import com.ampznetwork.herobrine.feature.haste.HasteInteractionSource;
 import com.ampznetwork.herobrine.feature.haste.HasteService;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Builder;
@@ -51,14 +49,14 @@ import java.util.stream.Stream;
 @Component
 @Controller
 @RequestMapping("/log/{id}")
-public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteInteractionSource {
+public class MinecraftLogAnalyzer implements HasteInteractionSource {
     public static final Emoji  EMOJI     = Emoji.fromUnicode("\uD83D\uDD0D"); // 🔍
     public static final String EVENT_KEY = "analyze-";
 
     @Autowired HasteService hasteService;
 
-    @Override
-    public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+    @EventListener
+    public void on(@NotNull ButtonInteractionEvent event) {
         if (!event.getCustomId().startsWith(EVENT_KEY)) return;
         var id = event.getCustomId().substring(EVENT_KEY.length());
         event.deferReply().flatMap(hook -> {
@@ -154,7 +152,6 @@ public class MinecraftLogAnalyzer extends ListenerAdapter implements HasteIntera
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

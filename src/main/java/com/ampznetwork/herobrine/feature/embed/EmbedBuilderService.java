@@ -19,7 +19,6 @@ import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
@@ -49,7 +48,7 @@ import java.util.function.Predicate;
 @Log
 @Service
 @Command("embed")
-public class EmbedBuilderService extends ListenerAdapter implements AuditLogSender {
+public class EmbedBuilderService implements AuditLogSender {
     public static final String INTERACTION_EDIT         = "Edit Embed";
     public static final String INTERACTION_ADD_FIELD    = "edit-field-add";
     public static final String INTERACTION_EDIT_FIELD   = "edit-field-edit";
@@ -74,8 +73,8 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
         return messageCreateData;
     }
 
-    @Override
-    public void onMessageContextInteraction(MessageContextInteractionEvent event) {
+    @EventListener
+    public void on(MessageContextInteractionEvent event) {
         if (!INTERACTION_EDIT.equals(event.getInteraction().getName())) return;
 
         var message = event.getTarget();
@@ -92,8 +91,8 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
         event.reply(createEmbedEditMenu(embed).build()).setEphemeral(true).queue();
     }
 
-    @Override
-    public void onButtonInteraction(ButtonInteractionEvent event) {
+    @EventListener
+    public void on(ButtonInteractionEvent event) {
         var userId = event.getUser().getIdLong();
 
         if (!activeEdits.containsKey(userId)) return;
@@ -112,9 +111,7 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
 
                 // reply with field selector
                 event.reply(new MessageCreateBuilder().setContent("Select field to edit")
-                        .addComponents(ActionRow.of(StringSelectMenu.create(id + APPEND_APPLY)
-                                .addOptions(options)
-                                .build()))
+                        .addComponents(ActionRow.of(StringSelectMenu.create(id + APPEND_APPLY).addOptions(options).build()))
                         .build()).setEphemeral(true).queue();
             }
             case INTERACTION_SUBMIT -> {
@@ -122,18 +119,16 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
                         .guild(event.getGuild())
                         .source(this)
                         .message(editor.getMessage() == null
-                                 ? "%s is creating a new embed in channel %s".formatted(event.getMember(),
-                                editor.getChannel())
-                                 : "%s is submitting edits to embed in message %s".formatted(event.getMember(),
-                                         editor.getMessage().getJumpUrl()))
+                                 ? "%s is creating a new embed in channel %s".formatted(event.getMember(), editor.getChannel())
+                                 : "%s is submitting edits to embed in message %s".formatted(event.getMember(), editor.getMessage().getJumpUrl()))
                         .queue();
                 editor.applyEdits().flatMap($ -> event.reply("Edits applied").setEphemeral(true)).queue();
             }
         }
     }
 
-    @Override
-    public void onModalInteraction(ModalInteractionEvent event) {
+    @EventListener
+    public void on(ModalInteractionEvent event) {
         var id     = event.getModalId();
         var userId = event.getUser().getIdLong();
         if (!activeEdits.containsKey(userId)) return;
@@ -170,8 +165,8 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
         event.editMessageEmbeds(editor.getEmbed().build()).queue();
     }
 
-    @Override
-    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+    @EventListener
+    public void on(StringSelectInteractionEvent event) {
         var id = event.getComponentId();
 
         var userId = event.getUser().getIdLong();
@@ -211,22 +206,18 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
-        var jda = event.getApplicationContext().getBean(JDA.class);
-        jda.addEventListener(this);
-        jda.upsertCommand(Commands.message(INTERACTION_EDIT)
-                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE))).queue();
+        event.getApplicationContext()
+                .getBean(JDA.class)
+                .upsertCommand(Commands.message(INTERACTION_EDIT).setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE)))
+                .queue();
 
         log.info("Initialized");
     }
 
     private MessageCreateBuilder createEmbedEditMenu(@Nullable MessageEmbed embed) {
-        var message = new MessageCreateBuilder().setContent(embed == null
-                                                            ? "Creating new embed"
-                                                            : "Editing the following embed:")
+        var message = new MessageCreateBuilder().setContent(embed == null ? "Creating new embed" : "Editing the following embed:")
                 .setComponents(ActionRow.of(StringSelectMenu.create(OPTION_EMBED_COMPONENT)
-                                .addOptions(Arrays.stream(EmbedComponent.values())
-                                        .map(EmbedComponent::getSelectOption)
-                                        .toList())
+                                .addOptions(Arrays.stream(EmbedComponent.values()).map(EmbedComponent::getSelectOption).toList())
                                 .setPlaceholder("Select an embed component to edit...")
                                 .build()),
                         ActionRow.of(Button.secondary(INTERACTION_ADD_FIELD, "Add Field..."),
@@ -240,10 +231,8 @@ public class EmbedBuilderService extends ListenerAdapter implements AuditLogSend
     }
 
     private Modal.Builder fieldMutatorModal(String id, @Nullable MessageEmbed.Field field) {
-        var inputFieldTitle = TextInput.create(OPTION_NAME, TextInputStyle.SHORT)
-                .setMaxLength(MessageEmbed.TITLE_MAX_LENGTH);
-        var inputFieldContent = TextInput.create(OPTION_CONTENT, TextInputStyle.PARAGRAPH)
-                .setMaxLength(MessageEmbed.VALUE_MAX_LENGTH);
+        var inputFieldTitle   = TextInput.create(OPTION_NAME, TextInputStyle.SHORT).setMaxLength(MessageEmbed.TITLE_MAX_LENGTH);
+        var inputFieldContent = TextInput.create(OPTION_CONTENT, TextInputStyle.PARAGRAPH).setMaxLength(MessageEmbed.VALUE_MAX_LENGTH);
         var inputFieldInline = yesNoSelection(OPTION_INLINE, field != null && field.isInline());
 
         if (field != null) {

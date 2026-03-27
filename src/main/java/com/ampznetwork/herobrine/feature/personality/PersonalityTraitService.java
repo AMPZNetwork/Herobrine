@@ -8,13 +8,11 @@ import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
@@ -41,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 @Command("personality")
 @Description("Configure Herobrine's personality")
-public class PersonalityTraitService extends ListenerAdapter {
+public class PersonalityTraitService {
     @Autowired MessageTemplateEngine templateEngine;
     @Autowired PersonalityTraitRepo traitRepo;
     @Autowired Event.Bus<GenericEvent> jdaEventBus;
@@ -108,7 +106,6 @@ public class PersonalityTraitService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         reload(null, null);

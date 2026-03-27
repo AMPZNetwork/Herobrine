@@ -3,7 +3,6 @@ package com.ampznetwork.herobrine.feature.haste;
 import com.ampznetwork.herobrine.feature.analyzer.MinecraftLogAnalyzer;
 import lombok.SneakyThrows;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.actionrow.ActionRowChildComponent;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -12,7 +11,6 @@ import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.MimeType;
@@ -61,7 +59,7 @@ import java.util.stream.Stream;
 @Command("haste")
 @RequestMapping("/haste")
 @Description("Haste file uploader")
-public class HasteService extends ListenerAdapter implements HasteInteractionSource {
+public class HasteService implements HasteInteractionSource {
     public static final String URL_PREFIX;
     public static final File   BASE_DIR;
     public static final Emoji  EMOJI = Emoji.fromUnicode("\uD83D\uDD17"); // 🔗
@@ -102,8 +100,8 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
         }
     }
 
-    @Override
-    public void onMessageReceived(MessageReceivedEvent event) {
+    @EventListener
+    public void on(MessageReceivedEvent event) {
         if (event.isWebhookMessage() || event.getAuthor().isBot() || event.getAuthor().isSystem()) return;
         var message = event.getMessage();
         if (message.getAttachments().isEmpty()) return;
@@ -114,9 +112,9 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
         message.addReaction(EMOJI).queue();
     }
 
-    @Override
     @SneakyThrows
-    public void onMessageReactionAdd(MessageReactionAddEvent event) {
+    @EventListener
+    public void on(MessageReactionAddEvent event) {
         if (!event.getReaction().getEmoji().equals(EMOJI)) return;
 
         var message  = event.retrieveMessage().complete();
@@ -168,7 +166,6 @@ public class HasteService extends ListenerAdapter implements HasteInteractionSou
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

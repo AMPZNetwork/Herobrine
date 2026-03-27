@@ -14,7 +14,6 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
 import org.comroid.commands.Command;
@@ -38,17 +37,14 @@ import java.util.stream.Collectors;
 @Log
 @Service
 @Command("mc-username-enforcer")
-public class MinecraftUsernameEnforcerService extends ListenerAdapter implements AuditLogSender, ErrorLogSender {
+public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLogSender {
     @Autowired JDA                                       jda;
     @Autowired MinecraftUsernameEnforcerConfigRepository enforcerConfigRepo;
     @Autowired LinkedAccountRepository                   linkedAccounts;
 
     @Command(permission = "134217728")
     @Description("Change Minecraft username enforcer configuration")
-    public String configure(
-            Guild guild,
-            @Command.Arg(autoFill = { "yes", "no" }) @Description("Whether to forcibly change nicknames") String enforce
-    ) {
+    public String configure(Guild guild, @Command.Arg(autoFill = { "yes", "no" }) @Description("Whether to forcibly change nicknames") String enforce) {
         var guildId = guild.getIdLong();
         var config  = enforcerConfigRepo.findById(guildId).orElse(null);
         var flag = "yes".equalsIgnoreCase(enforce);
@@ -69,9 +65,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
     @Command(permission = "134217728")
     @Description("Update all nicknames in this guild")
     public void update(@Nullable Guild guild) {
-        for (var config : guild == null
-                          ? enforcerConfigRepo.findAll()
-                          : enforcerConfigRepo.findById(guild.getIdLong()).stream().toList()) {
+        for (var config : guild == null ? enforcerConfigRepo.findAll() : enforcerConfigRepo.findById(guild.getIdLong()).stream().toList()) {
             if (!config.isEnforceNicknames()) continue;
 
             guild = jda.getGuildById(config.getGuildId());
@@ -81,12 +75,9 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
             }
 
             var members = guild.loadMembers().get();
-            var minecraftPlayernames = Streams.of(linkedAccounts.findAllById(members.stream()
-                            .map(ISnowflake::getIdLong)
-                            .toList()))
+            var minecraftPlayernames = Streams.of(linkedAccounts.findAllById(members.stream().map(ISnowflake::getIdLong).toList()))
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toMap(LinkedAccount::getDiscordId,
-                            account -> Player.fetchUsername(account.getMinecraftId()).join()));
+                    .collect(Collectors.toMap(LinkedAccount::getDiscordId, account -> Player.fetchUsername(account.getMinecraftId()).join()));
 
             record FailedUser(UserSnowflake user, String playerName, Throwable throwable) {}
             var failed = new HashSet<FailedUser>();
@@ -102,9 +93,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
 
                 try {
                     member.modifyNickname(playerName)
-                            .reason(playerName == null
-                                    ? "User does not have their account Linked"
-                                    : "Name does not match Minecraft Username")
+                            .reason(playerName == null ? "User does not have their account Linked" : "Name does not match Minecraft Username")
                             .queue();
                 } catch (Throwable t) {
                     failed.add(new FailedUser(member, playerName, t));
@@ -114,9 +103,7 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
             newErrorEntry().guild(guild)
                     .level(Level.WARNING)
                     .message("Unable to set nickname for users:\n- " + failed.stream()
-                            .map(entry -> "%s - `%s` - Reason: %s".formatted(entry.user,
-                                    entry.playerName,
-                                    entry.throwable.getClass().getSimpleName()))
+                            .map(entry -> "%s - `%s` - Reason: %s".formatted(entry.user, entry.playerName, entry.throwable.getClass().getSimpleName()))
                             .collect(Collectors.joining("\n- ")))
                     .queue();
         }
@@ -129,8 +116,8 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
                 .queue();
     }
 
-    @Override
-    public void onGuildMemberUpdateNickname(@NonNull GuildMemberUpdateNicknameEvent event) {
+    @EventListener
+    public void on(@NonNull GuildMemberUpdateNicknameEvent event) {
         var       guild  = event.getGuild();
         final var config = enforcerConfigRepo.findById(guild.getIdLong()).orElse(null);
         if (config == null || !config.isEnforceNicknames()) return;
@@ -156,7 +143,6 @@ public class MinecraftUsernameEnforcerService extends ListenerAdapter implements
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

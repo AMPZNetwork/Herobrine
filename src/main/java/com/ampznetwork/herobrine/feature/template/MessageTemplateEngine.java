@@ -41,7 +41,6 @@ import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionE
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.components.ComponentInteraction;
@@ -90,7 +89,7 @@ import java.util.stream.Collectors;
 @Log
 @Component
 @Command("template")
-public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSender {
+public class MessageTemplateEngine implements AuditLogSender {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
@@ -117,18 +116,15 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
     @Command(permission = "8192", privacy = CommandPrivacyLevel.PUBLIC)
     @Description("Evaluate message template scripts")
-    public JdaCommandAdapter.ResponseCallback evaluate(
-            GenericInteractionCreateEvent event,
-            @Command.Arg String template
-    ) {
+    public JdaCommandAdapter.ResponseCallback evaluate(GenericInteractionCreateEvent event, @Command.Arg String template) {
         return new JdaCommandAdapter.ResponseCallback("```dmt\n%s\n```".formatted(template), msg -> {
             var context = parse(template, event);
             return msg.reply(context.evaluate().addComponents(createFinalizerActionRow()).build());
         });
     }
 
-    @Override
-    public void onMessageContextInteraction(@NonNull MessageContextInteractionEvent event) {
+    @EventListener
+    public void on(@NonNull MessageContextInteractionEvent event) {
         if (!INTERACTION_GENERATE_TEMPLATE.equals(event.getInteraction().getName())) return;
 
         var responseRef = Reference.parse("response").build();
@@ -142,9 +138,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
             @Override
             public String toString() {
-                return declarations.stream()
-                        .map(StringSerializable::toSerializedString)
-                        .collect(Collectors.joining("\n"));
+                return declarations.stream().map(StringSerializable::toSerializedString).collect(Collectors.joining("\n"));
             }
 
             void append(Reference baseReference, String key, Expression value) {
@@ -152,19 +146,15 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             }
 
             void appendField(Reference baseReference, CharSequence title, CharSequence content, boolean inline) {
-                declarations.add(new ModifyStatement(baseReference.sub("field").build(),
-                        Operator.Plus,
-                        new ConstructorCall(Type.EMBED_FIELD, new HashMap<>() {{
-                            put("title", new LiteralString(title.toString()));
-                            put("content", new LiteralString(content.toString()));
-                            put("inline", new LiteralBoolean(inline));
-                        }})));
+                declarations.add(new ModifyStatement(baseReference.sub("field").build(), Operator.Plus, new ConstructorCall(Type.EMBED_FIELD, new HashMap<>() {{
+                    put("title", new LiteralString(title.toString()));
+                    put("content", new LiteralString(content.toString()));
+                    put("inline", new LiteralBoolean(inline));
+                }})));
             }
         };
 
-        if (!message.getContentRaw().isBlank()) helper.append(responseRef,
-                "content",
-                new LiteralString(message.getContentRaw()));
+        if (!message.getContentRaw().isBlank()) helper.append(responseRef, "content", new LiteralString(message.getContentRaw()));
 
         var embeds = message.getEmbeds();
         if (!embeds.isEmpty()) {
@@ -173,53 +163,30 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
             if (embed.getUrl() instanceof String url) helper.append(embedRef, "url", new LiteralString(url));
             if (embed.getTitle() instanceof String title) helper.append(embedRef, "title", new LiteralString(title));
-            if (embed.getDescription() instanceof String description) helper.append(embedRef,
-                    "description",
-                    new LiteralString(description));
+            if (embed.getDescription() instanceof String description) helper.append(embedRef, "description", new LiteralString(description));
             if (embed.getTimestamp() instanceof OffsetDateTime timestamp) helper.append(embedRef,
                     "timestamp",
                     new LiteralNumber(timestamp.toEpochSecond() * 1000));
-            if (embed.getColor() instanceof Color color) helper.append(embedRef,
-                    "color",
-                    new LiteralNumber(color.getRGB()));
+            if (embed.getColor() instanceof Color color) helper.append(embedRef, "color", new LiteralNumber(color.getRGB()));
             if (embed.getThumbnail() instanceof MessageEmbed.Thumbnail thumbnail) helper.append(embedRef,
                     "thumbnail",
-                    thumbnail.getUrl() instanceof CharSequence chars
-                    ? new LiteralString(chars.toString())
-                    : new LiteralNull());
+                    thumbnail.getUrl() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
             if (embed.getAuthor() instanceof MessageEmbed.AuthorInfo author) helper.append(embedRef,
                     "author",
                     new ConstructorCall(Type.EMBED_AUTHOR, new HashMap<>() {{
-                        put("name",
-                                author.getName() instanceof CharSequence chars
-                                ? new LiteralString(chars.toString())
-                                : new LiteralNull());
-                        put("url",
-                                author.getUrl() instanceof CharSequence chars
-                                ? new LiteralString(chars.toString())
-                                : new LiteralNull());
-                        put("iconUrl",
-                                author.getIconUrl() instanceof CharSequence chars
-                                ? new LiteralString(chars.toString())
-                                : new LiteralNull());
+                        put("name", author.getName() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
+                        put("url", author.getUrl() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
+                        put("iconUrl", author.getIconUrl() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
                     }}));
             if (embed.getFooter() instanceof MessageEmbed.Footer footer) helper.append(embedRef,
                     "footer",
                     new ConstructorCall(Type.EMBED_FOOTER, new HashMap<>() {{
-                        put("text",
-                                footer.getText() instanceof CharSequence chars
-                                ? new LiteralString(chars.toString())
-                                : new LiteralNull());
-                        put("iconUrl",
-                                footer.getIconUrl() instanceof CharSequence chars
-                                ? new LiteralString(chars.toString())
-                                : new LiteralNull());
+                        put("text", footer.getText() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
+                        put("iconUrl", footer.getIconUrl() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
                     }}));
             if (embed.getImage() instanceof MessageEmbed.ImageInfo image) helper.append(embedRef,
                     "footer",
-                    image.getUrl() instanceof CharSequence chars
-                    ? new LiteralString(chars.toString())
-                    : new LiteralNull());
+                    image.getUrl() instanceof CharSequence chars ? new LiteralString(chars.toString()) : new LiteralNull());
 
             for (var field : embed.getFields())
                 helper.appendField(embedRef, field.getName(), field.getValue(), field.isInline());
@@ -227,18 +194,16 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
         var file = FileUpload.fromData(helper.getBytes(), "message.dmt");
         event.reply(new MessageCreateBuilder().useComponentsV2()
-                .addComponents(Container.of(TextDisplay.of(Markdown.CodeBlock.apply(helper.toString()))),
-                        FileDisplay.fromFile(file))
+                .addComponents(Container.of(TextDisplay.of(Markdown.CodeBlock.apply(helper.toString()))), FileDisplay.fromFile(file))
                 .build()).queue();
     }
 
-    @Override
-    public void onButtonInteraction(@NotNull ButtonInteractionEvent event) {
+    @EventListener
+    public void on(@NotNull ButtonInteractionEvent event) {
         var componentId = event.getComponentId();
         var message     = event.getMessage();
 
-        if (!message.getAuthor().equals(event.getUser()) && (event.getMember() == null || !event.getMember()
-                .hasPermission(Permission.MESSAGE_MANAGE))) {
+        if (!message.getAuthor().equals(event.getUser()) && (event.getMember() == null || !event.getMember().hasPermission(Permission.MESSAGE_MANAGE))) {
             event.reply(ERROR_NO_PERMISSION).setEphemeral(true).queue();
             return;
         }
@@ -253,21 +218,17 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             }
 
             event.deferReply(true)
-                    .flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> hookSendFinal(
-                                    event,
-                                    channel,
-                                    message,
-                                    referenced,
-                                    hook))
-                            .onErrorFlatMap(JdaUtil.exceptionLogger(log,
-                                    hook,
-                                    "Could not respond to button interaction")))
+                    .flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> hookSendFinal(event,
+                            channel,
+                            message,
+                            referenced,
+                            hook)).onErrorFlatMap(JdaUtil.exceptionLogger(log, hook, "Could not respond to button interaction")))
                     .queue();
         }
     }
 
-    @Override
-    public void onEntitySelectInteraction(@NotNull EntitySelectInteractionEvent event) {
+    @EventListener
+    public void on(@NotNull EntitySelectInteractionEvent event) {
         if (!INTERACTION_FINALIZE_IN_CHANNEL.equals(event.getComponentId())) return;
 
         var channel = event.getChannel();
@@ -283,24 +244,15 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
             return;
         }
 
-        event.deferReply(true)
-                .flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> {
-                            var selected = event.getValues()
-                                    .stream()
-                                    .flatMap(Streams.cast(MessageChannelUnion.class))
-                                    .findAny()
-                                    .orElseThrow();
+        event.deferReply(true).flatMap(hook -> topmostMessageByReferences(channel, reference).flatMap(referenced -> {
+            var selected = event.getValues().stream().flatMap(Streams.cast(MessageChannelUnion.class)).findAny().orElseThrow();
 
-                            return hookSendFinal(event, selected, message, referenced, hook);
-                        })
-                        .onErrorFlatMap(JdaUtil.exceptionLogger(log,
-                                hook,
-                                "Could not respond to entity selection interaction")))
-                .queue();
+            return hookSendFinal(event, selected, message, referenced, hook);
+        }).onErrorFlatMap(JdaUtil.exceptionLogger(log, hook, "Could not respond to entity selection interaction"))).queue();
     }
 
-    @Override
-    public void onMessageReceived(@NotNull MessageReceivedEvent event) {
+    @EventListener
+    public void on(@NotNull MessageReceivedEvent event) {
         var message = event.getMessage();
         var txt = findTemplate(message);
 
@@ -309,8 +261,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         message.addReaction(Constant.EMOJI_EVAL_TEMPLATE).queue();
     }
 
-    @Override
-    public void onMessageReactionAdd(@NotNull MessageReactionAddEvent event) {
+    @EventListener
+    public void on(@NotNull MessageReactionAddEvent event) {
         var user = event.getUser();
 
         if (user == null || user.isBot()) return;
@@ -319,12 +271,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         try {
             var channel = event.getChannel();
 
-            event.retrieveMessage()
-                    .flatMap(message -> sendPreview(channel,
-                            event,
-                            ref(message),
-                            new MessageDeliveryTarget.Reply(message)))
-                    .queue();
+            event.retrieveMessage().flatMap(message -> sendPreview(channel, event, ref(message), new MessageDeliveryTarget.Reply(message))).queue();
         } finally {
             event.getReaction().removeReaction(user).queue();
         }
@@ -333,19 +280,14 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        var jda = event.getApplicationContext().getBean(JDA.class);
-        jda.addEventListener(this);
-        jda.upsertCommand(Commands.message(INTERACTION_GENERATE_TEMPLATE)).queue();
+        event.getApplicationContext().getBean(JDA.class).upsertCommand(Commands.message(INTERACTION_GENERATE_TEMPLATE)).queue();
 
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
     }
 
-    private RestAction<?> hookSendFinal(
-            GenericEvent event, MessageChannelUnion channel, Message original,
-            Message referenced, InteractionHook hook
-    ) {
+    private RestAction<?> hookSendFinal(GenericEvent event, MessageChannelUnion channel, Message original, Message referenced, InteractionHook hook) {
         RestAction<?> action = sendFinal(channel, referenced, event, new MessageDeliveryTarget.Hook(hook));
 
         var flag = action instanceof MessageCreateAction;
@@ -366,15 +308,10 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         };
 
         // todo lol this is dogshit
-        return channel.retrieveMessageById(reference.getMessageId())
-                .flatMap(helper::tryStepInto)
-                .flatMap(helper::tryStepInto);
+        return channel.retrieveMessageById(reference.getMessageId()).flatMap(helper::tryStepInto).flatMap(helper::tryStepInto);
     }
 
-    private RestAction<?> sendFinal(
-            MessageChannelUnion channel, Message referenced, GenericEvent event,
-            MessageDeliveryTarget callback
-    ) {
+    private RestAction<?> sendFinal(MessageChannelUnion channel, Message referenced, GenericEvent event, MessageDeliveryTarget callback) {
         var template = verifyTemplate(referenced, event, callback);
         if (template.isEmpty()) return callback.send(ERROR_NO_TEMPLATE);
 
@@ -382,18 +319,13 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
 
         newAuditEntry().level(Level.INFO)
                 .guild(channel.asGuildMessageChannel().getGuild())
-                .message("%s is evaluating template from %s in channel %s".formatted(referenced.getAuthor(),
-                        referenced,
-                        channel))
+                .message("%s is evaluating template from %s in channel %s".formatted(referenced.getAuthor(), referenced, channel))
                 .queue();
 
         return channel.sendMessage(response);
     }
 
-    private RestAction<?> sendPreview(
-            MessageChannelUnion channel, GenericEvent event, MessageReference reference,
-            MessageDeliveryTarget callback
-    ) {
+    private RestAction<?> sendPreview(MessageChannelUnion channel, GenericEvent event, MessageReference reference, MessageDeliveryTarget callback) {
         return channel.retrieveMessageById(reference.getMessageId()).flatMap(referenced -> {
             var template = verifyTemplate(referenced, event, callback);
             if (template.isEmpty()) return callback.send(ERROR_NO_TEMPLATE);
@@ -403,8 +335,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         });
     }
 
-    private Optional<TemplateContext> verifyTemplate(
-            Message referenced, GenericEvent event, @Nullable MessageDeliveryTarget callback) {
+    private Optional<TemplateContext> verifyTemplate(Message referenced, GenericEvent event, @Nullable MessageDeliveryTarget callback) {
         if (referenced == null) {
             if (callback != null) callback.send(ERROR_NO_REFERENCE).queue();
             return Optional.empty();
@@ -429,10 +360,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     private Optional<String> findTemplate(Message message) {
-        if (message.getAttachments()
-                    .stream()
-                    .map(Message.Attachment::getFileName)
-                    .noneMatch(name -> name.endsWith(".dmt")) || message.getAuthor().isBot()) return Optional.empty();
+        if (message.getAttachments().stream().map(Message.Attachment::getFileName).noneMatch(name -> name.endsWith(".dmt")) || message.getAuthor().isBot())
+            return Optional.empty();
 
         var content = message.getContentRaw();
         var matcher = MD_PATTERN.matcher(content);
@@ -441,8 +370,7 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
         if (!message.getAttachments().isEmpty()) {
             var attachment = message.getAttachments().getFirst();
             try (
-                    var is = attachment.getProxy().download().join(); var isr = new InputStreamReader(is);
-                    var sw = new StringWriter()
+                    var is = attachment.getProxy().download().join(); var isr = new InputStreamReader(is); var sw = new StringWriter()
             ) {
                 isr.transferTo(sw);
                 return Optional.of(sw.toString());
@@ -483,8 +411,8 @@ public class MessageTemplateEngine extends ListenerAdapter implements AuditLogSe
     }
 
     private Collection<ActionRow> createFinalizerActionRow() {
-        return List.of(ActionRow.of(EntitySelectMenu.create(INTERACTION_FINALIZE_IN_CHANNEL,
-                        EntitySelectMenu.SelectTarget.CHANNEL).setPlaceholder("Send this into channel...").build()),
-                ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here")));
+        return List.of(ActionRow.of(EntitySelectMenu.create(INTERACTION_FINALIZE_IN_CHANNEL, EntitySelectMenu.SelectTarget.CHANNEL)
+                .setPlaceholder("Send this into channel...")
+                .build()), ActionRow.of(Button.primary(INTERACTION_RESEND_HERE, "Send here")));
     }
 }

@@ -8,7 +8,6 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
@@ -48,7 +47,7 @@ import java.util.stream.Stream;
 @Log
 @Service
 @NoArgsConstructor
-public class RankSyncService extends ListenerAdapter implements AuditLogSender {
+public class RankSyncService implements AuditLogSender {
     public static final String META_DISCORD_USER_ID   = "ranksync-discord-user-id";
     public static final String META_DISCORD_ROLE_ID   = "ranksync-discord-role-id";
     public static final String META_DISCORD_ROLE_TIER = "ranksync-tier";
@@ -235,7 +234,6 @@ public class RankSyncService extends ListenerAdapter implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");

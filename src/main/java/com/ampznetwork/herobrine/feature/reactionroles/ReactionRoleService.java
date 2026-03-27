@@ -29,7 +29,6 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.modals.Modal;
@@ -60,7 +59,7 @@ import java.util.stream.Stream;
 @Service
 @Command("roles")
 @Description("Configure reaction roles")
-public class ReactionRoleService extends ListenerAdapter implements AuditLogSender {
+public class ReactionRoleService implements AuditLogSender {
     public static final String COMPONENT_ID_ROLESET_EDIT = "roleset-edit-";
     public static final String COMPONENT_ID_ROLE_ADD     = "roles-add-";
     public static final String COMPONENT_ID_ROLE_REMOVE  = "roles-remove-";
@@ -79,9 +78,8 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
     @Description("Resend reaction role messages")
     @SuppressWarnings("UnusedReturnValue")
     public String resend(
-            Guild guild, Member member,
-            @Command.Arg(required = false, autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) @Description(
-                    "The reaction set to resend") @Nullable String set
+            Guild guild, Member member, @Command.Arg(required = false,
+                                                     autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) @Description("The reaction set to resend") @Nullable String set
     ) {
         var sets = setRepo.findAllByGuildId(guild.getIdLong());
         if (sets.isEmpty()) return "There are no configured reaction roles";
@@ -102,44 +100,25 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
             channel.sendMessage(msg.build()).flatMap(it -> {
                 setRepo.setMessageId(guild.getIdLong(), roleSet.getName(), it.getIdLong());
 
-                return RestAction.allOf(roleSet.getRoles()
-                        .stream()
-                        .map(ReactionRoleBinding::getEmoji)
-                        .map(Emoji::fromFormatted)
-                        .map(it::addReaction)
-                        .toList());
+                return RestAction.allOf(roleSet.getRoles().stream().map(ReactionRoleBinding::getEmoji).map(Emoji::fromFormatted).map(it::addReaction).toList());
             }).queue();
         }
 
-        audit().newEntry()
-                .guild(guild)
-                .source(this)
-                .message("%s has resent reaction-role message for set %s".formatted(member, set))
-                .queue();
+        audit().newEntry().guild(guild).source(this).message("%s has resent reaction-role message for set %s".formatted(member, set)).queue();
         return "Reaction messages were resent";
     }
 
     @Command(permission = "268435456")
     @Description("Create a set of role reactions")
     public String createset(
-            Guild guild, Member member, @Command.Arg String name, @Command.Arg String description,
-            @Command.Arg TextChannel channel, @Command.Arg ReactionRoleSet.Method method
+            Guild guild, Member member, @Command.Arg String name, @Command.Arg String description, @Command.Arg TextChannel channel,
+            @Command.Arg ReactionRoleSet.Method method
     ) {
         if (name.contains("-")) throw new CommandError("Name cannot contain dashes (`-`)");
 
-        var set = new ReactionRoleSet(guild.getIdLong(),
-                name,
-                description,
-                channel.getIdLong(),
-                method,
-                null,
-                new ArrayList<>());
+        var set = new ReactionRoleSet(guild.getIdLong(), name, description, channel.getIdLong(), method, null, new ArrayList<>());
 
-        audit().newEntry()
-                .guild(guild)
-                .source(this)
-                .message("%s is applying changes to set %s".formatted(member, set))
-                .queue();
+        audit().newEntry().guild(guild).source(this).message("%s is applying changes to set %s".formatted(member, set)).queue();
         setRepo.save(set);
 
         return "Reaction role set `%s` was created".formatted(name);
@@ -147,14 +126,10 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
 
     @Command(permission = "268435456")
     @Description("Remove a set of role reactions")
-    public String removeset(
-            Guild guild, Member member,
-            @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String name
-    ) {
+    public String removeset(Guild guild, Member member, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String name) {
         var guildId = guild.getIdLong();
 
-        if (setRepo.findById(new ReactionRoleSet.Key(guildId, name)).isEmpty())
-            return "There is no reaction set with that name";
+        if (setRepo.findById(new ReactionRoleSet.Key(guildId, name)).isEmpty()) return "There is no reaction set with that name";
 
         audit().newEntry().guild(guild).source(this).message("%s is removing set %s".formatted(member, name)).queue();
         setRepo.removeBy(guildId, name);
@@ -163,10 +138,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
 
     @Command(permission = "268435456")
     @Description("Edit an existing set of role reactions")
-    public MessageCreateData editset(
-            Guild guild,
-            @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set
-    ) {
+    public MessageCreateData editset(Guild guild, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set) {
         final var guildId = guild.getIdLong();
 
         return setRepo.findById(new ReactionRoleSet.Key(guildId, set)).map(roleSet -> {
@@ -183,12 +155,10 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
     @Command(permission = "268435456")
     @Description("Create a new reaction role")
     public Object createrole(
-            Guild guild, Member member,
-            @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set, @Command.Arg Role role,
+            Guild guild, Member member, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set, @Command.Arg Role role,
             @Command.Arg String emoji, @Command.Arg String name, @Command.Arg String description
     ) {
-        var roleSet = setRepo.findById(new ReactionRoleSet.Key(guild.getIdLong(), set))
-                .orElseThrow(() -> new CommandError("No such roleset: " + set));
+        var roleSet = setRepo.findById(new ReactionRoleSet.Key(guild.getIdLong(), set)).orElseThrow(() -> new CommandError("No such roleset: " + set));
 
         if (roleSet.findBinding(name).isPresent()) {
             return "%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING, name);
@@ -197,11 +167,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         var obj = new ReactionRoleBinding(emoji, name, description, role.getIdLong());
         roleSet.getRoles().add(obj);
 
-        audit().newEntry()
-                .guild(guild)
-                .source(this)
-                .message("%s is adding role %s to set %s".formatted(member, obj, roleSet))
-                .queue();
+        audit().newEntry().guild(guild).source(this).message("%s is adding role %s to set %s".formatted(member, obj, roleSet)).queue();
         setRepo.save(roleSet);
 
         return new MessageCreateBuilder().setContent("Role created").setEmbeds(roleSet.toEmbed().build()).build();
@@ -224,8 +190,8 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         }).orElseThrow(() -> new CommandError("Could not find reaction role set with name `%s`".formatted(set)));
     }
 
-    @Override
-    public void onMessageContextInteraction(MessageContextInteractionEvent event) {
+    @EventListener
+    public void on(MessageContextInteractionEvent event) {
         if (!event.getInteraction().getName().equals("Refresh")) return;
 
         var message = event.getTarget();
@@ -242,13 +208,11 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         event.reply("Successfully refreshed the message").setEphemeral(true).queue();
     }
 
-    @Override
+    @EventListener
     @SuppressWarnings("DuplicatedCode")
-    public void onButtonInteraction(ButtonInteractionEvent event) {
-        if (event.getGuild() == null || Stream.of(COMPONENT_ID_ROLESET_EDIT,
-                COMPONENT_ID_ROLE_ADD,
-                COMPONENT_ID_ROLE_REMOVE,
-                COMPONENT_ID_ROLE_EDIT).noneMatch(event.getComponentId()::startsWith)) return;
+    public void on(ButtonInteractionEvent event) {
+        if (event.getGuild() == null || Stream.of(COMPONENT_ID_ROLESET_EDIT, COMPONENT_ID_ROLE_ADD, COMPONENT_ID_ROLE_REMOVE, COMPONENT_ID_ROLE_EDIT)
+                .noneMatch(event.getComponentId()::startsWith)) return;
 
         var    componentId = event.getCustomId();
         var    li          = componentId.lastIndexOf('-');
@@ -263,38 +227,27 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         var roleSet = setRepo.findById(new ReactionRoleSet.Key(event.getGuild().getIdLong(), setName)).orElseThrow();
 
         switch (action) {
-            case COMPONENT_ID_ROLE_ADD -> event.replyModal(createRoleMutatorModal(componentId,
-                    "Select role to add",
-                    null).build()).queue();
+            case COMPONENT_ID_ROLE_ADD -> event.replyModal(createRoleMutatorModal(componentId, "Select role to add", null).build()).queue();
             case COMPONENT_ID_ROLE_EDIT -> {
                 var role = roleSet.findBinding(roleName).orElseThrow();
                 event.replyModal(createRoleMutatorModal(componentId, "Editing role", role).build()).queue();
             }
-            case COMPONENT_ID_ROLESET_EDIT -> event.replyModal(createRoleSetMutatorModal(componentId,
-                    "Editing roleset",
-                    roleSet).build()).queue();
+            case COMPONENT_ID_ROLESET_EDIT -> event.replyModal(createRoleSetMutatorModal(componentId, "Editing roleset", roleSet).build()).queue();
             case COMPONENT_ID_ROLE_REMOVE -> {
                 var selectMenu = StringSelectMenu.create(OPTION_ID_ROLE);
                 for (var role : roleSet.getRoles())
-                    selectMenu.addOption(role.getName(),
-                            role.getName(),
-                            role.getDescription(),
-                            Emoji.fromFormatted(role.getEmoji()));
-                event.replyModal(Modal.create(componentId, "Select role to remove")
-                        .addComponents(Label.of("Role", selectMenu.build()))
-                        .build()).queue();
+                    selectMenu.addOption(role.getName(), role.getName(), role.getDescription(), Emoji.fromFormatted(role.getEmoji()));
+                event.replyModal(Modal.create(componentId, "Select role to remove").addComponents(Label.of("Role", selectMenu.build())).build()).queue();
             }
             default -> throw new IllegalStateException("Unexpected value: " + action);
         }
     }
 
-    @Override
+    @EventListener
     @SuppressWarnings("DuplicatedCode")
-    public void onModalInteraction(ModalInteractionEvent event) {
-        if (event.getGuild() == null || Stream.of(COMPONENT_ID_ROLESET_EDIT,
-                COMPONENT_ID_ROLE_ADD,
-                COMPONENT_ID_ROLE_REMOVE,
-                COMPONENT_ID_ROLE_EDIT).noneMatch(event.getModalId()::startsWith)) return;
+    public void on(ModalInteractionEvent event) {
+        if (event.getGuild() == null || Stream.of(COMPONENT_ID_ROLESET_EDIT, COMPONENT_ID_ROLE_ADD, COMPONENT_ID_ROLE_REMOVE, COMPONENT_ID_ROLE_EDIT)
+                .noneMatch(event.getModalId()::startsWith)) return;
 
         var    componentId = event.getCustomId();
         var    li          = componentId.lastIndexOf('-');
@@ -319,9 +272,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
                 if (mapping != null && !mapping.getAsString().isBlank()) {
                     var buf = mapping.getAsString();
                     if (setRepo.findById(new ReactionRoleSet.Key(guildId, buf)).isPresent()) {
-                        event.reply("%s Role set with name %s already exists".formatted(Constant.EMOJI_WARNING, buf))
-                                .setEphemeral(true)
-                                .queue();
+                        event.reply("%s Role set with name %s already exists".formatted(Constant.EMOJI_WARNING, buf)).setEphemeral(true).queue();
                         return;
                     }
                     roleSet.setName(buf);
@@ -331,8 +282,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
                 if (mapping != null && !mapping.getAsString().isBlank()) roleSet.setDescription(mapping.getAsString());
 
                 mapping = interaction.getValue(OPTION_ID_METHOD);
-                if (mapping != null) roleSet.setMethod(ReactionRoleSet.Method.valueOf(mapping.getAsStringList()
-                        .getFirst()));
+                if (mapping != null) roleSet.setMethod(ReactionRoleSet.Method.valueOf(mapping.getAsStringList().getFirst()));
 
                 audit().newEntry()
                         .guild(event.getGuild())
@@ -342,34 +292,25 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
                 setRepo.save(roleSet);
             }
             case COMPONENT_ID_ROLE_ADD -> {
-                var role = Objects.requireNonNull(interaction.getValue(OPTION_ID_ROLE), "role value")
-                        .getAsMentions()
-                        .getRoles()
-                        .getFirst();
-                var emoji = Objects.requireNonNull(interaction.getValue(OPTION_ID_EMOJI), "emoji value").getAsString();
-                var name  = Objects.requireNonNull(interaction.getValue(OPTION_ID_NAME), "name value").getAsString();
-                var description = Objects.requireNonNull(interaction.getValue(OPTION_ID_DESCRIPTION),
-                        "description value").getAsString();
+                var role        = Objects.requireNonNull(interaction.getValue(OPTION_ID_ROLE), "role value").getAsMentions().getRoles().getFirst();
+                var emoji       = Objects.requireNonNull(interaction.getValue(OPTION_ID_EMOJI), "emoji value").getAsString();
+                var name        = Objects.requireNonNull(interaction.getValue(OPTION_ID_NAME), "name value").getAsString();
+                var description = Objects.requireNonNull(interaction.getValue(OPTION_ID_DESCRIPTION), "description value").getAsString();
 
                 if (roleSet.findBinding(name).isPresent()) {
-                    event.reply("%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING, name))
-                            .setEphemeral(true)
-                            .queue();
+                    event.reply("%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING, name)).setEphemeral(true).queue();
                 }
 
                 createrole(event.getGuild(), event.getMember(), setName, role, emoji, name, description);
             }
             case COMPONENT_ID_ROLE_REMOVE -> {
-                var _roleName = Objects.requireNonNull(interaction.getValue(OPTION_ID_ROLE), "role value")
-                        .getAsString();
+                var _roleName = Objects.requireNonNull(interaction.getValue(OPTION_ID_ROLE), "role value").getAsString();
                 roleSet.getRoles().removeIf(role -> role.getName().equals(_roleName));
 
                 audit().newEntry()
                         .guild(event.getGuild())
                         .source(this)
-                        .message("%s is removing reaction-role %s from set %s".formatted(event.getMember(),
-                                _roleName,
-                                roleSet))
+                        .message("%s is removing reaction-role %s from set %s".formatted(event.getMember(), _roleName, roleSet))
                         .queue();
                 setRepo.save(roleSet);
             }
@@ -386,8 +327,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
                 if (mapping != null && !mapping.getAsString().isBlank()) {
                     var buf = mapping.getAsString();
                     if (roleSet.findBinding(roleName).isPresent()) {
-                        event.reply("%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING,
-                                buf)).setEphemeral(true).queue();
+                        event.reply("%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING, buf)).setEphemeral(true).queue();
                         return;
                     }
                     role.setName(buf);
@@ -409,13 +349,13 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         event.reply("This interaction has been successful!").setEphemeral(true).queue();
     }
 
-    @Override
-    public void onMessageReactionAdd(@NonNull MessageReactionAddEvent event) {
+    @EventListener
+    public void on(@NonNull MessageReactionAddEvent event) {
         reactionInteract(event, event.getGuild()::addRoleToMember);
     }
 
-    @Override
-    public void onMessageReactionRemove(@NonNull MessageReactionRemoveEvent event) {
+    @EventListener
+    public void on(@NonNull MessageReactionRemoveEvent event) {
         reactionInteract(event, event.getGuild()::removeRoleFromMember);
     }
 
@@ -437,9 +377,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
             return;
         }
 
-        binding.map(ReactionRoleBinding::getRoleId)
-                .map(jda::getRoleById)
-                .ifPresent(role -> action.apply(user, role).queue());
+        binding.map(ReactionRoleBinding::getRoleId).map(jda::getRoleById).ifPresent(role -> action.apply(user, role).queue());
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -448,9 +386,7 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
         var optionName        = TextInput.create(OPTION_ID_NAME, TextInputStyle.SHORT);
         var optionDescription = TextInput.create(OPTION_ID_DESCRIPTION, TextInputStyle.PARAGRAPH);
         var optionMethod = StringSelectMenu.create(OPTION_ID_METHOD)
-                .addOptions(Arrays.stream(ReactionRoleSet.Method.values())
-                        .map(ReactionRoleSet.Method::getSelectOption)
-                        .toList())
+                .addOptions(Arrays.stream(ReactionRoleSet.Method.values()).map(ReactionRoleSet.Method::getSelectOption).toList())
                 .setDefaultOptions(ReactionRoleSet.Method.PICK_MANY.getSelectOption());
 
         if (roleSet != null) {
@@ -490,10 +426,10 @@ public class ReactionRoleService extends ListenerAdapter implements AuditLogSend
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        var jda = event.getApplicationContext().getBean(JDA.class);
-        jda.addEventListener(this);
-        jda.upsertCommand(Commands.message("Refresh")
-                .setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR))).queue();
+        event.getApplicationContext()
+                .getBean(JDA.class)
+                .upsertCommand(Commands.message("Refresh").setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)))
+                .queue();
 
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 

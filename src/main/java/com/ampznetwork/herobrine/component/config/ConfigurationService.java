@@ -4,8 +4,6 @@ import com.ampznetwork.herobrine.Program;
 import com.ampznetwork.herobrine.component.config.model.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.comroid.api.java.ResourceLoader;
 import org.comroid.commands.impl.CommandManager;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +19,7 @@ import java.io.IOException;
 
 @Log
 @Service
-public class ConfigurationService extends ListenerAdapter {
+public class ConfigurationService {
     @Bean
     public File configFile(@Autowired File botDir) throws IOException {
         var file = new File(botDir, "config.json5");
@@ -37,7 +35,6 @@ public class ConfigurationService extends ListenerAdapter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
