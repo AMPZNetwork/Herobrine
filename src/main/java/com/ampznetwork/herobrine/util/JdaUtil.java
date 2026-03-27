@@ -31,6 +31,7 @@ import org.comroid.api.java.StackTraceUtils;
 import org.comroid.api.text.Markdown;
 import org.comroid.api.text.StringUtil;
 import org.comroid.commands.autofill.IAutoFillProvider;
+import org.comroid.commands.impl.CommandUsage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 
@@ -117,6 +119,11 @@ public class JdaUtil {
 
     public enum AutoFillLogLevels implements IAutoFillProvider {
         @Instance INSTANCE;
+
+        @Override
+        public Stream<? extends CharSequence> autoFill(CommandUsage usage, String argName, String currentValue) {
+            return Stream.of("OFF", "SEVERE", "WARNING", "INFO", "CONFIG", "FINE", "FINER", "FINEST", "ALL");
+        }
     }
 
     private static JDA jda() {
