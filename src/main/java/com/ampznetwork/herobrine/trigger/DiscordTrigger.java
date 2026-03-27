@@ -8,18 +8,16 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.comroid.annotations.Instance;
 import org.comroid.api.Polyfill;
-import org.comroid.api.func.util.Event;
 import org.comroid.commands.autofill.IAutoFillProvider;
 import org.comroid.commands.impl.CommandUsage;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 @Value
-public class DiscordTrigger<T extends GenericEvent> implements Function<Event.Bus<? super GenericEvent>, Event.Bus<T>> {
+public class DiscordTrigger<T extends GenericEvent> {
     private static final Map<String, DiscordTrigger<?>>       values     = new ConcurrentHashMap<>();
     public static final  Map<String, DiscordTrigger<?>>       VALUES     = Collections.unmodifiableMap(values);
     public static final  DiscordTrigger<GuildMemberJoinEvent> ON_JOIN    = new DiscordTrigger<>(GuildMemberJoinEvent.class);
@@ -48,11 +46,6 @@ public class DiscordTrigger<T extends GenericEvent> implements Function<Event.Bu
     @Override
     public String toString() {
         return eventType.getSimpleName();
-    }
-
-    @Override
-    public Event.Bus<T> apply(Event.Bus<? super GenericEvent> bus) {
-        return bus.flatMap(eventType);
     }
 
     public enum AutoFillNames implements IAutoFillProvider {

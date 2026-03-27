@@ -3,23 +3,16 @@ package com.ampznetwork.herobrine.feature.personality;
 import com.ampznetwork.herobrine.feature.personality.model.PersonalityTrait;
 import com.ampznetwork.herobrine.feature.template.MessageTemplateEngine;
 import com.ampznetwork.herobrine.repo.PersonalityTraitRepo;
-import com.ampznetwork.herobrine.util.Constant;
 import com.ampznetwork.herobrine.util.JdaUtil;
-import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
-import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
-import org.comroid.api.func.util.Event;
-import org.comroid.api.func.util.Streams;
-import org.comroid.api.tree.Container;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
@@ -31,10 +24,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
 @Log
 @Service
 @Command("personality")
@@ -42,44 +31,31 @@ import java.util.concurrent.TimeUnit;
 public class PersonalityTraitService {
     @Autowired MessageTemplateEngine templateEngine;
     @Autowired PersonalityTraitRepo traitRepo;
-    @Autowired Event.Bus<GenericEvent> jdaEventBus;
     @Autowired TraitEditorService    creatorService;
 
-    private @NonFinal List<? extends Event.Listener<? extends GenericEvent>> listeners = new ArrayList<>();
+    @EventListener
+    public void on(GenericEvent event) {
+        if (!(event instanceof GenericMessageEvent)) return; // todo remove this antipattern
 
-    @Command(permission = "8")
-    @Description("Reload listeners for all personality traits")
-    public void reload(@Nullable IReplyCallback callback, @Nullable Guild guild) {
-        listeners.forEach(Container.Base::close);
-        listeners = Streams.of(guild == null ? traitRepo.findAll() : traitRepo.findAllByGuildId(guild.getIdLong()))
-                .map(trait -> trait.getDiscordTrigger()
-                        .apply(jdaEventBus)
-                        .mapData(JdaUtil.eventGuildFilter(trait.getGuildId()))
-                        .filter($ -> trait.getRandomDetail().check())
-                        .filterData(event -> {
-                            var message = JdaUtil.getMessage(event);
-                            return message != null && trait.getContentFilter().matches(message.getContentDisplay());
-                        })
-                        .subscribeData(event -> handle(trait, event)))
-                .toList();
+        var eventType = event.getClass();
+        var guild     = JdaUtil.getGuild(event).orElse(null);
+        var message   = JdaUtil.getMessage((GenericMessageEvent) event);
 
-        if (callback != null) callback.replyEmbeds(new EmbedBuilder().setTitle(
-                                "%s %d Personality listeners have been reloaded".formatted(Constant.EMOJI_SUCCESS, listeners.size()))
-                        .setColor(Constant.COLOR_SUCCESS)
-                        .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(5))
-                        .build())
-                .setEphemeral(true)
-                .delay(5, TimeUnit.SECONDS)
-                .flatMap(InteractionHook::deleteOriginal)
-                .queue();
+        if (guild == null) return;
+
+        for (var trait : traitRepo.findAllByGuildId(guild.getIdLong())) {
+            if (!trait.getDiscordTrigger().getEventType().isAssignableFrom(eventType)) continue;
+            if (!trait.getRandomDetail().check()) continue;
+
+            if (message == null || !trait.getContentFilter().matches(message.getContentDisplay())) continue;
+
+            handle(trait, (GenericMessageEvent) event);
+        }
     }
 
     @Command(permission = "16")
     @Description("Create a new personality trait using a flow")
-    public void create(
-            IReplyCallback callback, Guild guild, Member member,
-            @Command.Arg @Description("The name of the new personality trait") String name
-    ) {
+    public void create(IReplyCallback callback, Guild guild, Member member, @Command.Arg @Description("The name of the new personality trait") String name) {
         if (guild == null) throw new CommandError("This only works inside guilds");
 
         creatorService.findTraitEditor(guild, member).ifPresent(creatorService.editors::remove);
@@ -91,8 +67,7 @@ public class PersonalityTraitService {
     @Description("Create a new personality trait using a flow")
     public void edit(
             IReplyCallback callback, Guild guild, Member member,
-            @Command.Arg(autoFillProvider = PersonalityTrait.AutoFillTraitNamesByGuild.class) @Description(
-                    "The name of the personality trait") String name
+            @Command.Arg(autoFillProvider = PersonalityTrait.AutoFillTraitNamesByGuild.class) @Description("The name of the personality trait") String name
     ) {
         if (guild == null) throw new CommandError("This only works inside guilds");
 
@@ -108,21 +83,16 @@ public class PersonalityTraitService {
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
-        reload(null, null);
-
         log.info("Initialized");
     }
 
-    private RestAction<Message> openEditor(
-            IReplyCallback callback, Guild guild, Member member, String name, @Nullable PersonalityTrait trait) {
+    private RestAction<Message> openEditor(IReplyCallback callback, Guild guild, Member member, String name, @Nullable PersonalityTrait trait) {
         return callback.deferReply(true).flatMap(hook -> {
             var message = hook.getCallbackResponse().getMessage();
             var editor = new TraitEditorService.TraitEditor(guild,
                     member,
                     message,
-                    trait == null
-                    ? PersonalityTrait.builder().name(name).guildId(guild.getIdLong())
-                    : trait.toBuilder());
+                    trait == null ? PersonalityTrait.builder().name(name).guildId(guild.getIdLong()) : trait.toBuilder());
 
             creatorService.editors.add(editor);
 

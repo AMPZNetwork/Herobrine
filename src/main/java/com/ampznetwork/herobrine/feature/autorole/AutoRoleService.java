@@ -4,7 +4,6 @@ import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.autorole.model.AutoRoleMapping;
 import com.ampznetwork.herobrine.repo.AutoRoleRepository;
 import com.ampznetwork.herobrine.trigger.DiscordTrigger;
-import lombok.Value;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -13,7 +12,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.guild.member.GenericGuildMemberEvent;
 import org.comroid.annotations.Description;
-import org.comroid.api.func.util.Event;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
@@ -24,15 +22,12 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
-import java.util.function.Consumer;
-
 @Log
 @Service
 @Command("autorole")
 @Description("Configure automatically assigned roles")
 public class AutoRoleService implements AuditLogSender {
-    @Autowired AutoRoleRepository      repo;
-    @Autowired Event.Bus<GenericEvent> jdaEventBus;
+    @Autowired AutoRoleRepository repo;
 
     @Command(permission = "268435456")
     @Description("List all currently configured automated roles")
@@ -64,7 +59,6 @@ public class AutoRoleService implements AuditLogSender {
 
         audit().newEntry().guild(guild).source(this).message("%s is creating an automation for role %s, based on %s".formatted(member, role, trigger)).queue();
         repo.save(autoRoleMapping);
-        initialize(autoRoleMapping);
 
         return "Role automation `%s` was created".formatted(autoRoleMapping);
     }
@@ -81,9 +75,17 @@ public class AutoRoleService implements AuditLogSender {
         return "Automation for role %s was deleted".formatted(role);
     }
 
-    public void initialize(final AutoRoleMapping mapping) {
-        var listener = mapping.getDiscordTrigger().apply(jdaEventBus).subscribeData(new EventHandler(mapping));
-        mapping.getListeners().add(listener);
+    @EventListener
+    public void on(GenericEvent event) {
+        if (!(event instanceof GenericGuildMemberEvent)) return; // todo remove this antipattern
+
+        var eventType = event.getClass();
+
+        for (var mapping : repo.findAll()) {
+            if (!mapping.getDiscordTrigger().getEventType().isAssignableFrom(eventType)) continue;
+
+            mapping.accept(this, (GenericGuildMemberEvent) event);
+        }
     }
 
     @EventListener
@@ -91,32 +93,6 @@ public class AutoRoleService implements AuditLogSender {
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
-        for (var entry : repo.findAll()) initialize(entry);
-
         log.info("Initialized");
-    }
-
-    @Value
-    private class EventHandler implements Consumer<GenericGuildMemberEvent> {
-        AutoRoleMapping mapping;
-
-        @Override
-        public void accept(GenericGuildMemberEvent event) {
-            var guild  = event.getGuild();
-            var member = event.getMember();
-            var role   = guild.getRoleById(mapping.getRoleId());
-
-            if (role == null) {
-                log.warning("Invalid role mapping; role not found with id %d".formatted(mapping.getRoleId()));
-                return;
-            }
-
-            audit().newEntry()
-                    .guild(guild)
-                    .source(this)
-                    .message("%s is automatically receiving role %s, as defined by %s".formatted(member, role, mapping))
-                    .queue();
-            guild.addRoleToMember(member, role).queue();
-        }
     }
 }

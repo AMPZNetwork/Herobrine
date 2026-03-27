@@ -9,7 +9,6 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import org.comroid.api.func.util.Event;
 import org.comroid.api.io.FileFlag;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
@@ -19,7 +18,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -34,14 +32,11 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
     /** this field exists to control lifecycle */
-    @Autowired       ApplicationContextProvider context;
-    @Autowired       ApplicationEventPublisher  publisher;
-    @Lazy @Autowired Event.Bus<GenericEvent>    jdaEventBus;
+    @Autowired ApplicationContextProvider context;
+    @Autowired ApplicationEventPublisher  publisher;
 
     @Override
     public void onEvent(@NonNull GenericEvent event) {
-        jdaEventBus.accept(event);
-
         try {
             publisher.publishEvent(event);
         } catch (Throwable t) {
@@ -54,12 +49,6 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
     @Bean
     public JDA jda(@Autowired Config config) throws InterruptedException {
         return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS)).build().awaitReady();
-    }
-
-    @Bean
-    @Deprecated
-    public Event.Bus<GenericEvent> jdaEventBus() {
-        return new Event.Bus<>();
     }
 
     @Bean
