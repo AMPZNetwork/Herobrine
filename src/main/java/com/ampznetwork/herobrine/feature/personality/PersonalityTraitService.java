@@ -37,14 +37,13 @@ public class PersonalityTraitService {
     public void on(GenericEvent event) {
         if (!(event instanceof GenericMessageEvent)) return; // todo remove this antipattern
 
-        var eventType = event.getClass();
         var guild     = JdaUtil.getGuild(event).orElse(null);
         var message   = JdaUtil.getMessage((GenericMessageEvent) event);
 
         if (guild == null) return;
 
         for (var trait : traitRepo.findAllByGuildId(guild.getIdLong())) {
-            if (!trait.getDiscordTrigger().getEventType().isAssignableFrom(eventType)) continue;
+            if (!trait.getDiscordTrigger().test(event)) continue;
             if (!trait.getRandomDetail().check()) continue;
 
             if (message == null || !trait.getContentFilter().matches(message.getContentDisplay())) continue;

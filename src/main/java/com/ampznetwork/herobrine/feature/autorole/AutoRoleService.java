@@ -79,10 +79,8 @@ public class AutoRoleService implements AuditLogSender {
     public void on(GenericEvent event) {
         if (!(event instanceof GenericGuildMemberEvent)) return; // todo remove this antipattern
 
-        var eventType = event.getClass();
-
         for (var mapping : repo.findAll()) {
-            if (!mapping.getDiscordTrigger().getEventType().isAssignableFrom(eventType)) continue;
+            if (!mapping.getDiscordTrigger().test(event)) continue;
 
             mapping.accept(this, (GenericGuildMemberEvent) event);
         }

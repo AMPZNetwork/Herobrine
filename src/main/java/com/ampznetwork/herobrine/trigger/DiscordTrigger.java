@@ -14,10 +14,11 @@ import org.comroid.commands.impl.CommandUsage;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 @Value
-public class DiscordTrigger<T extends GenericEvent> {
+public class DiscordTrigger<T extends GenericEvent> implements Predicate<GenericEvent> {
     private static final Map<String, DiscordTrigger<?>>       values     = new ConcurrentHashMap<>();
     public static final  Map<String, DiscordTrigger<?>>       VALUES     = Collections.unmodifiableMap(values);
     public static final  DiscordTrigger<GuildMemberJoinEvent> ON_JOIN    = new DiscordTrigger<>(GuildMemberJoinEvent.class);
@@ -46,6 +47,11 @@ public class DiscordTrigger<T extends GenericEvent> {
     @Override
     public String toString() {
         return eventType.getSimpleName();
+    }
+
+    @Override
+    public boolean test(GenericEvent event) {
+        return eventType.isAssignableFrom(event.getClass());
     }
 
     public enum AutoFillNames implements IAutoFillProvider {
