@@ -25,10 +25,12 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageEditData;
+import org.comroid.annotations.Instance;
 import org.comroid.api.Polyfill;
 import org.comroid.api.java.StackTraceUtils;
 import org.comroid.api.text.Markdown;
 import org.comroid.api.text.StringUtil;
+import org.comroid.commands.autofill.IAutoFillProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -111,6 +113,10 @@ public class JdaUtil {
                 .build()).setEphemeral(true).map(hook -> hook.getCallbackResponse().getMessage());
         if (finalizer != null) action = action.flatMap(finalizer);
         return action.delay(2, TimeUnit.SECONDS).flatMap(Message::delete);
+    }
+
+    public enum AutoFillLogLevels implements IAutoFillProvider {
+        @Instance INSTANCE;
     }
 
     private static JDA jda() {

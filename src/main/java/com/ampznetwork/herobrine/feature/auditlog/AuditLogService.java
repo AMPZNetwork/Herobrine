@@ -42,26 +42,25 @@ public class AuditLogService {
     }
 
     @Command(permission = "8")
-    @Description("Change audit log channel configuration")
-    public EmbedBuilder channel(
-            Guild guild,
-            @Command.Arg @Description("The channel to send the audit log to") TextChannel channel
+    @Description("Change audit log configuration")
+    public EmbedBuilder config(
+            Guild guild, @Command.Arg @Description("The channel to send the audit log to") TextChannel channel,
+            @Command.Arg(required = false, autoFillProvider = JdaUtil.AutoFillLogLevels.class) @Description("The minimum level to log") @Nullable String level
     ) {
+        final var logLevel = level != null ? Level.parse(level) : Level.ALL;
+
         var guildId   = guild.getIdLong();
         var channelId = channel.getIdLong();
         var preferences = prefRepo.findById(guildId)
-                .map(prefs -> prefs.setChannelId(channelId))
-                .orElseGet(() -> new AuditLogPreferences(guildId, channelId));
+                .map(prefs -> prefs.setChannelId(channelId).setMinimumLevel(logLevel))
+                .orElseGet(() -> new AuditLogPreferences(guildId, channelId, logLevel));
 
         prefRepo.save(preferences);
         return preferences.toEmbed();
     }
 
     @Builder(builderMethodName = "newEntry", buildMethodName = "queue", builderClassName = "EntryAPI")
-    public void queueEntry(
-            Guild guild, @Nullable Level level, Object source, CharSequence message,
-            @Nullable Throwable t
-    ) {
+    public void queueEntry(Guild guild, @Nullable Level level, Object source, CharSequence message, @Nullable Throwable t) {
         try {
             if (level == null) level = Level.INFO;
 
@@ -70,18 +69,19 @@ public class AuditLogService {
 
             if (prefsResult.isEmpty()) return;
 
-            var prefs   = prefsResult.get();
-            var channel = jda.getTextChannelById(prefs.getChannelId());
+            var prefs        = prefsResult.get();
+            var channel      = jda.getTextChannelById(prefs.getChannelId());
+            var minimumLevel = prefs.getMinimumLevel();
+
+            if (minimumLevel != null && minimumLevel.intValue() < level.intValue()) return;
 
             if (channel == null) {
                 log.warning("Unable to send Audit Log to channel with id %d; channel not found".formatted(prefs.getChannelId()));
                 return;
             }
 
-            var sourceName = source instanceof AuditLogSender sender
-                             ? sender.getAuditSourceName()
-                             : String.valueOf(source);
-            var embed = JdaUtil.logEntryEmbed(level, sourceName, message, t);
+            var sourceName = source instanceof AuditLogSender sender ? sender.getAuditSourceName() : String.valueOf(source);
+            var embed      = JdaUtil.logEntryEmbed(level, sourceName, message, t);
 
             channel.sendMessageEmbeds(embed).queue();
             log.log(Level.FINE, "[%s @ %s] %s: %s".formatted(level.getName(), guild, sourceName, message), t);

@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 
+import java.util.logging.Level;
+
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 
 @Data
@@ -19,6 +21,7 @@ import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 public class AuditLogPreferences {
     @Id long guildId;
     long channelId;
+    Level minimumLevel;
 
     public EmbedBuilder toEmbed() {
         var channel = bean(JDA.class).getTextChannelById(channelId);
