@@ -1,18 +1,19 @@
 package com.ampznetwork.herobrine.component.discord;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
+import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;
+import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.GenericEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.comroid.api.func.util.Event;
 import org.comroid.api.io.FileFlag;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -25,10 +26,11 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
+import java.util.logging.Level;
 
 @Log
 @Component
-public class DiscordProvider extends ListenerAdapter {
+public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener, ErrorLogSender {
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
     /** this field exists to control lifecycle */
@@ -37,9 +39,16 @@ public class DiscordProvider extends ListenerAdapter {
     @Lazy @Autowired Event.Bus<GenericEvent>    jdaEventBus;
 
     @Override
-    public void onGenericEvent(@NotNull GenericEvent event) {
+    public void onEvent(@NonNull GenericEvent event) {
         jdaEventBus.accept(event);
-        publisher.publishEvent(event);
+
+        try {
+            publisher.publishEvent(event);
+        } catch (Throwable t) {
+            JdaUtil.getGuild(event)
+                    .ifPresentOrElse(guild -> newErrorEntry().guild(guild).level(Level.SEVERE).message(t.getMessage()).throwable(t).queue(),
+                            () -> log.log(Level.SEVERE, "Unable to publish JDA event outside a guild", t));
+        }
     }
 
     @Bean

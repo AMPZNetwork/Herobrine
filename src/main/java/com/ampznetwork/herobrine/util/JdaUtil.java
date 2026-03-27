@@ -14,7 +14,9 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.unions.ChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.channel.GenericChannelEvent;
+import net.dv8tion.jda.api.events.emoji.GenericEmojiEvent;
 import net.dv8tion.jda.api.events.guild.GenericGuildEvent;
+import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
@@ -30,6 +32,7 @@ import org.comroid.api.text.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -74,15 +77,21 @@ public class JdaUtil {
         return embed.build();
     }
 
+    public static Optional<Guild> getGuild(GenericEvent event) {
+        return Optional.ofNullable(switch (event) {
+            case GenericGuildEvent gge -> gge.getGuild();
+            case GenericChannelEvent gce -> gce.getGuild();
+            case GenericMessageEvent gme -> gme.getGuild();
+            case GenericEmojiEvent gee -> gee.getGuild();
+            case GenericInteractionCreateEvent gice -> gice.getGuild();
+            default -> null;
+        });
+    }
+
     public static <GE extends GenericEvent> @NotNull Function<@NotNull GE, @Nullable GE> eventGuildFilter(
             final long guildId
     ) {
-        return event -> switch (event) {
-            case GenericGuildEvent gge when gge.getGuild().getIdLong() == guildId -> event;
-            case GenericChannelEvent gce when gce.getGuild().getIdLong() == guildId -> event;
-            case GenericMessageEvent gme when gme.getGuild().getIdLong() == guildId -> event;
-            default -> null;
-        };
+        return event -> getGuild(event).map(ISnowflake::getIdLong).filter(id -> id == guildId).map($ -> event).orElse(null);
     }
 
     public static @Nullable Message getMessage(GenericMessageEvent event) {
