@@ -31,6 +31,7 @@ import java.util.logging.Level;
 public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener, ErrorLogSender {
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
+    @Autowired JDA jda;
     /** this field exists to control lifecycle */
     @Autowired ApplicationContextProvider context;
     @Autowired ApplicationEventPublisher  publisher;
@@ -40,9 +41,9 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
         try {
             publisher.publishEvent(event);
         } catch (Throwable t) {
-            JdaUtil.getGuild(event)
-                    .ifPresentOrElse(guild -> newErrorEntry().guild(guild).level(Level.SEVERE).message(t.getMessage()).throwable(t).queue(),
-                            () -> log.log(Level.SEVERE, "Unable to publish JDA event outside a guild", t));
+            var guild = JdaUtil.getGuild(event).orElseGet(() -> jda.getGuildById(495506209881849856L));
+
+            newErrorEntry().guild(guild).level(Level.SEVERE).message(t.getMessage()).throwable(t).queue();
         }
     }
 
