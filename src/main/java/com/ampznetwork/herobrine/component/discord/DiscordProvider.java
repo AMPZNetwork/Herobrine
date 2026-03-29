@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -31,10 +32,18 @@ import java.util.logging.Level;
 public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener, ErrorLogSender {
     public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
 
-    @Autowired JDA jda;
+    @Lazy @Autowired JDA                        jda;
     /** this field exists to control lifecycle */
-    @Autowired ApplicationContextProvider context;
-    @Autowired ApplicationEventPublisher  publisher;
+    @Autowired       ApplicationContextProvider context;
+    @Autowired       ApplicationEventPublisher  publisher;
+
+    @Bean
+    public JDA jda(@Autowired Config config) throws InterruptedException {
+        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS))
+                .addEventListeners(this)
+                .build()
+                .awaitReady();
+    }
 
     @Override
     public void onEvent(@NonNull GenericEvent event) {
@@ -45,11 +54,6 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
 
             newErrorEntry().guild(guild).level(Level.SEVERE).message(t.getMessage()).throwable(t).queue();
         }
-    }
-
-    @Bean
-    public JDA jda(@Autowired Config config) throws InterruptedException {
-        return JDABuilder.create(config.getDiscord().getToken(), GatewayIntent.getIntents(GatewayIntent.ALL_INTENTS)).build().awaitReady();
     }
 
     @Bean
@@ -64,7 +68,6 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).addEventListener(this);
         event.getApplicationContext().getBean(CommandManager.class).register(this);
 
         log.info("Initialized");
