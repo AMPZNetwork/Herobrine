@@ -35,6 +35,6 @@ public class ServerAwarePlayerList implements Clearable {
     }
 
     public void refresh() {
-        channel.getManager().setTopic("**__Online Players__**" + this).queue();
+        channel.getManager().setTopic("**__Online Players__**\n" + this).queue();
     }
 }
