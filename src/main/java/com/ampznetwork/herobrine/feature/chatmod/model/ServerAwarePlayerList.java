@@ -1,5 +1,6 @@
 package com.ampznetwork.herobrine.feature.chatmod.model;
 
+import com.ampznetwork.libmod.api.util.Util;
 import lombok.Value;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -17,7 +18,7 @@ public class ServerAwarePlayerList implements Clearable {
     Map<String, ServerPlayerList> servers = new ConcurrentHashMap<>();
 
     public void poll(PlayerListEvent event) {
-        servers.computeIfAbsent(event.getPacket().getSource(), ServerPlayerList::new).poll(event);
+        servers.computeIfAbsent(Util.Kyori.sanitizePlain(event.getPacket().getSource()), ServerPlayerList::new).poll(event);
     }
 
     @Override
