@@ -95,7 +95,7 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
     }
 
     @EventListener
-    public void onModalInteraction(@NonNull ModalInteractionEvent event) {
+    public void on(@NonNull ModalInteractionEvent event) {
         if (!event.getModalId().equals(INTERACTION_OPEN)) return;
 
         var guild = event.getGuild();
