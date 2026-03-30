@@ -16,7 +16,9 @@ import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
@@ -37,8 +39,8 @@ import java.util.ArrayList;
 @Service
 @Command("lobby-game")
 public class GameManager {
-    public static final String INTERACTION_CONFIRM = "games_confirm";
-    public static final String INTERACTION_MODIFY  = "games_modify";
+    public static final String INTERACTION_CONFIRM = "games_confirm_";
+    public static final String INTERACTION_MODIFY  = "games_modify_";
     public static final String OPTION_NAME         = "option_name";
     public static final String OPTION_DESCRIPTION  = "option_description";
     public static final String OPTION_STEAM_APPID  = "option_steam_appid";
@@ -47,12 +49,45 @@ public class GameManager {
     @Autowired GameRepository         games;
     @Autowired GameFlagListRepository lists;
 
+    @EventListener
+    public void on(ModalInteractionEvent event) {
+        var modalId = event.getModalId();
+        if (!modalId.startsWith(INTERACTION_MODIFY)) return;
+        var game    = modalId.substring(INTERACTION_MODIFY.length() + 1);
+        var builder = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game))).toBuilder();
+
+        String buf;
+        var    mapping = event.getValue(OPTION_NAME);
+        if (mapping != null && !(buf = mapping.getAsString()).isBlank()) builder.name(buf);
+
+        mapping = event.getValue(OPTION_DESCRIPTION);
+        if (mapping != null && !(buf = mapping.getAsString()).isBlank()) builder.description(buf);
+
+        mapping = event.getValue(OPTION_STEAM_APPID);
+        if (mapping != null && (buf = mapping.getAsString()).matches("\\d+")) builder.steamAppId(Long.parseLong(buf));
+
+        var result = builder.build();
+        if (!result.getName().equals(game) && games.existsById(game)) games.deleteById(game);
+        games.save(result);
+    }
+
+    @EventListener
+    public void on(ButtonInteractionEvent event) {
+        var componentId = event.getComponentId();
+        if (!componentId.startsWith(INTERACTION_CONFIRM)) return;
+        var game = componentId.substring(INTERACTION_CONFIRM.length() + 1);
+
+        games.deleteById(game);
+
+        event.replyEmbeds(EmbedTemplate.success("Game `%s` was deleted".formatted(game)).build()).queue();
+    }
+
     @Command
     @Description("Create a new game entry")
     public void create(SlashCommandInteractionEvent event, User user) {
         permissions.verify(user, HerobrinePermission.Gameadmin);
 
-        event.replyModal(createEditorModal(null, Game.builder()).build()).queue();
+        event.replyModal(createEditorModal(null).build()).queue();
     }
 
     @Command
@@ -62,7 +97,7 @@ public class GameManager {
 
         var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
 
-        event.replyModal(createEditorModal(result, result.toBuilder()).build()).queue();
+        event.replyModal(createEditorModal(result).build()).queue();
     }
 
     @Command
@@ -73,7 +108,7 @@ public class GameManager {
         var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
 
         return new MessageCreateBuilder().addEmbeds(EmbedTemplate.warning("Are you sure you want to delete this game?").addField(result.toField()).build())
-                .addComponents(ActionRow.of(Button.danger(INTERACTION_CONFIRM, "Yes, delete!")));
+                .addComponents(ActionRow.of(Button.danger(INTERACTION_CONFIRM + game, "Yes, delete!")));
     }
 
     @Command(permission = "8589934592")
@@ -112,7 +147,7 @@ public class GameManager {
         log.info("Initialized");
     }
 
-    private Modal.Builder createEditorModal(@Nullable Game game, Game.Builder builder) {
+    private Modal.Builder createEditorModal(@Nullable Game game) {
         return Modal.create(INTERACTION_MODIFY, "Modifying Game")
                 .addComponents(Label.of("Title", TextInput.create(OPTION_NAME, TextInputStyle.SHORT).setValue(game == null ? null : game.getName()).build()),
                         Label.of("Description",
