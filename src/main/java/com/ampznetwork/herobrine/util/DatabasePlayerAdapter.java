@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.util;
 
-import com.ampznetwork.herobrine.model.Player;
+import com.ampznetwork.herobrine.model.CachedPlayer;
 import com.ampznetwork.herobrine.repo.PlayerRepo;
 import com.ampznetwork.libmod.api.interop.game.PlayerIdentifierAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,11 +15,11 @@ public class DatabasePlayerAdapter implements PlayerIdentifierAdapter {
 
     @Override
     public Optional<com.ampznetwork.libmod.api.entity.Player> getPlayer(UUID uuid) {
-        return players.findById(uuid).map(Player::upgrade);
+        return players.findById(uuid).map(CachedPlayer::upgrade);
     }
 
     @Override
     public Optional<com.ampznetwork.libmod.api.entity.Player> getPlayer(String name) {
-        return players.findPlayerByName(name).map(Player::upgrade);
+        return players.findPlayerByName(name).map(CachedPlayer::upgrade);
     }
 }

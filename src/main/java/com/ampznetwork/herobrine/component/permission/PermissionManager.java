@@ -19,8 +19,10 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.kyori.adventure.util.TriState;
 import org.comroid.annotations.Description;
+import org.comroid.api.text.Markdown;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
+import org.comroid.commands.model.CommandError;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +44,11 @@ public class PermissionManager {
     @Autowired UserPermissionAssignmentRepository   userAssignments;
     @Autowired RolePermissionAssignmentRepository   roleAssignments;
     @Autowired MemberPermissionAssignmentRepository memberAssignments;
+
+    public void verify(ISnowflake target, CharSequence permission) {
+        if (queryFor(target, permission).toBooleanOrElse(false)) return;
+        throw new CommandError("Insufficient permissions; missing " + Markdown.Code.apply(permission));
+    }
 
     public TriState queryFor(ISnowflake target, CharSequence permission) {
         return queryFor(null, target, permission);
