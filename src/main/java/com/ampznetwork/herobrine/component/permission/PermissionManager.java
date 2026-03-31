@@ -72,7 +72,7 @@ public class PermissionManager {
 
     @Command
     @Description("Define user-level permissions")
-    public void define(
+    public void user(
             User user, @Command.Arg @Description("Target to define permission for") User target,
             @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
             @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
@@ -86,7 +86,7 @@ public class PermissionManager {
 
     @Command(permission = "8")
     @Description("Define member-level permissions")
-    public void define(
+    public void member(
             @Command.Arg @Description("Target to define permission for") Member target,
             @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
             @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
@@ -98,7 +98,7 @@ public class PermissionManager {
 
     @Command(permission = "268435456")
     @Description("Define role-level permissions")
-    public void define(
+    public void role(
             @Command.Arg @Description("Target to define permission for") Role target,
             @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
             @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
