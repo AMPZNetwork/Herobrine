@@ -129,6 +129,10 @@ sourceSets {
     }
 }
 
+bootWar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
 tasks.named('test') {
     //outputs.dir snippetsDir
     useJUnitPlatform()
