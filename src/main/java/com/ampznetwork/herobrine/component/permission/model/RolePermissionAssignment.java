@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @NoArgsConstructor
 @AllArgsConstructor
-@IdClass(MemberPermissionAssignment.Key.class)
+@IdClass(RolePermissionAssignment.Key.class)
 public class RolePermissionAssignment implements PermissionAssignment {
     @Id long   roleId;
     @Id String key;
