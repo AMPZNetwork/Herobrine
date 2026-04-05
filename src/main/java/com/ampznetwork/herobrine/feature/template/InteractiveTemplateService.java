@@ -2,7 +2,6 @@ package com.ampznetwork.herobrine.feature.template;
 
 import com.ampznetwork.herobrine.feature.template.context.EmbedComponentReference;
 import com.ampznetwork.herobrine.util.Constant;
-import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.experimental.NonFinal;
@@ -31,6 +30,7 @@ import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.impl.discord.JdaCommandAdapter;
 import org.comroid.commands.model.CommandPrivacyLevel;
+import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;

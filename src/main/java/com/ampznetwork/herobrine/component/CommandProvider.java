@@ -1,7 +1,12 @@
 package com.ampznetwork.herobrine.component;
 
+import com.ampznetwork.herobrine.util.ApplicationContextProvider;
 import lombok.extern.java.Log;
-import org.comroid.commands.impl.CommandManager;
+import net.dv8tion.jda.api.JDA;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.event.EventListener;
@@ -11,19 +16,25 @@ import org.springframework.stereotype.Component;
 @Log
 @Component
 public class CommandProvider {
+    @Autowired ApplicationContextProvider context;
+
     @Bean
-    public CommandManager cmdr(
-    ) {
-        var cmdr = new CommandManager();
-        cmdr.addChild(this);
-        cmdr.register(this);
-        return cmdr;
+    public InteractionCore core() {
+        return new InteractionCore(context);
+    }
+
+    @Bean
+    @ConditionalOnBean(JDA.class)
+    public JdaAdapter jdaAdapter(@Autowired InteractionCore core, @Autowired JDA jda) {
+        var adapter = new JdaAdapter(core, jda);
+        core.addChild(adapter);
+        return adapter;
     }
 
     @Order
     @EventListener
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).initialize();
+        event.getApplicationContext().getBean(InteractionCore.class).initialize();
 
         log.info("Initialized");
     }

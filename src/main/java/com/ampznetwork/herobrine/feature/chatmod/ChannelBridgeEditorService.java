@@ -5,7 +5,6 @@ import com.ampznetwork.herobrine.feature.chatmod.model.GuildChannelNameAutoFillP
 import com.ampznetwork.herobrine.model.GuildUserKey;
 import com.ampznetwork.herobrine.repo.ChannelBridgeConfigRepo;
 import com.ampznetwork.herobrine.util.Constant;
-import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.Value;
 import lombok.experimental.NonFinal;
 import lombok.extern.java.Log;
@@ -36,6 +35,7 @@ import org.comroid.api.tree.UncheckedCloseable;
 import org.comroid.commands.Command;
 import org.comroid.commands.impl.CommandManager;
 import org.comroid.commands.model.CommandError;
+import org.comroid.util.JdaUtil;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,7 +115,7 @@ public class ChannelBridgeEditorService {
                 if (channelBridges.existsById(key)) channelBridges.deleteById(key);
                 channelBridges.save(config);
 
-                JdaUtil.replySuccess(event).queue();
+                com.ampznetwork.herobrine.util.JdaUtil.replySuccess(event).queue();
                 session.close();
             }
         }
@@ -173,7 +173,7 @@ public class ChannelBridgeEditorService {
             }
         }
 
-        JdaUtil.replySuccess(event, message -> session.refresh().map($ -> message)).queue();
+        com.ampznetwork.herobrine.util.JdaUtil.replySuccess(event, message -> session.refresh().map($ -> message)).queue();
     }
 
     @EventListener
