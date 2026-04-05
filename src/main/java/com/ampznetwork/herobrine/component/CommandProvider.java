@@ -1,6 +1,5 @@
 package com.ampznetwork.herobrine.component;
 
-import com.ampznetwork.herobrine.util.ApplicationContextProvider;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import org.comroid.interaction.InteractionCore;
@@ -16,11 +15,9 @@ import org.springframework.stereotype.Component;
 @Log
 @Component
 public class CommandProvider {
-    @Autowired ApplicationContextProvider context;
-
     @Bean
     public InteractionCore core() {
-        return new InteractionCore(context);
+        return new InteractionCore();
     }
 
     @Bean
