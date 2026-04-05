@@ -6,7 +6,6 @@ import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.api.io.FileFlag;
 import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -68,7 +67,7 @@ public class MaintenanceProvider {
     ) {
         verifySuperadmin(user);
 
-        if (Boolean.TRUE.equals(purgeCommands)) FileFlag.enable(DiscordProvider.COMMAND_PURGE_FILE);
+        if (Boolean.TRUE.equals(purgeCommands)) JdaAdapter.PURGE_COMMANDS.enable();
 
         System.exit(0);
         return "Goodbye";

@@ -21,14 +21,11 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
 import java.util.logging.Level;
 
 @Log
 @Component
 public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener, ErrorLogSender {
-    public static final File COMMAND_PURGE_FILE = new File("./.purge_commands");
-
     @Lazy @Autowired JDA                        jda;
     /** this field exists to control lifecycle */
     @Autowired       ApplicationContextProvider context;
