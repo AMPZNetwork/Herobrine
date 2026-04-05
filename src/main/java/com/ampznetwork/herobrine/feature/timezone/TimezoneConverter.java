@@ -12,9 +12,10 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandPrivacyLevel;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
@@ -36,13 +37,12 @@ import java.util.regex.Pattern;
 
 @Log
 @Component
-@Command("time")
+@Interaction("time")
 @Description("Set your timezone preferences")
 public class TimezoneConverter {
     public static final DateTimeFormatter FORMATTER    = DateTimeFormatter.ofPattern("HH:mm");
     public static final Emoji             EMOJI        = Emoji.fromUnicode("⏰"); // ⏰
-    public static final Pattern           TIME_PATTERN = Pattern.compile(
-            "(?<hour>\\d{1,2})(:(?<minute>\\d{1,2}))?(?<mid>[ap]m)?");
+    public static final Pattern TIME_PATTERN = Pattern.compile("(?<hour>\\d{1,2})(:(?<minute>\\d{1,2}))?(?<mid>[ap]m)?");
 
     @Autowired UserPreferenceRepo users;
 
@@ -51,11 +51,11 @@ public class TimezoneConverter {
         return new File(botDir, "timezones.json");
     }
 
-    @Command(value = "zone", privacy = CommandPrivacyLevel.EPHEMERAL)
+    @Interaction(value = "zone")
     @Description("Set your timezone")
     public String zone(
-            User user, @Command.Arg(value = "timezone", autoFillProvider = TimeZoneAutoFillProvider.class) @Description(
-                    "The timezone to set") String timezone
+            User user, @Parameter(value = "timezone",
+                                  completion = { @Completion(provider = TimeZoneAutoFillProvider.class) }) @Description("The timezone to set") String timezone
     ) {
         var zone = ZoneId.of(timezone);
         users.setTimezone(user.getIdLong(), zone);
@@ -95,8 +95,7 @@ public class TimezoneConverter {
             // find reacter timezone
             var opt = users.findById(user.getIdLong()).map(UserPreferences::getTimezone);
             if (opt.isEmpty()) {
-                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
-                                "Sorry, but you did not set your timezone!")
+                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription("Sorry, but you did not set your timezone!")
                         .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
                         .build()).delay(30, TimeUnit.SECONDS).flatMap(Message::delete));
                 return;
@@ -106,10 +105,10 @@ public class TimezoneConverter {
             // find author timezone
             opt = users.findById(author.getIdLong()).map(UserPreferences::getTimezone);
             if (opt.isEmpty()) {
-                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription(
-                                "Sorry, but %s did not set their timezone!".formatted(author))
-                        .setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds")
-                        .build()).delay(30, TimeUnit.SECONDS).flatMap(Message::delete));
+                action = action.flatMap($ -> channel.sendMessageEmbeds(new EmbedBuilder().setDescription("Sorry, but %s did not set their timezone!".formatted(
+                                author)).setFooter("Set it with `/time zone <id>` - This message self destructs in 30 seconds").build())
+                        .delay(30, TimeUnit.SECONDS)
+                        .flatMap(Message::delete));
                 return;
             }
             var authorZone = opt.get();
@@ -117,8 +116,7 @@ public class TimezoneConverter {
             // start build embed & find time
             var matcher = TIME_PATTERN.matcher(message.getContentDisplay());
             var embed = new EmbedBuilder().setTitle("Timezone conversion")
-                    .setFooter(user.getEffectiveName() + " - This message self destructs in 1 minute",
-                            user.getAvatarUrl());
+                    .setFooter(user.getEffectiveName() + " - This message self destructs in 1 minute", user.getAvatarUrl());
             var any = false;
 
             // find all matching times
@@ -127,23 +125,17 @@ public class TimezoneConverter {
                 var zonedTime     = ZonedDateTime.of(LocalDate.now(), time, authorZone);
                 var convertedTime = zonedTime.withZoneSameInstant(targetZone);
 
-                embed.addField("%s mentioned the time `%s` (`%s`)".formatted(author.getEffectiveName(),
-                                matcher.group(0),
-                                FORMATTER.format(zonedTime)),
+                embed.addField("%s mentioned the time `%s` (`%s`)".formatted(author.getEffectiveName(), matcher.group(0), FORMATTER.format(zonedTime)),
                         "That would be `%s` in your time zone".formatted(FORMATTER.format(convertedTime)),
                         false);
                 any = true;
             }
 
             // fallback if no time was found
-            if (!any) embed.addField("No timestamp was found",
-                    "Sorry, I could not find any timestamp to convert",
-                    false);
+            if (!any) embed.addField("No timestamp was found", "Sorry, I could not find any timestamp to convert", false);
 
             // respond
-            action = action.flatMap($ -> channel.sendMessageEmbeds(embed.build())
-                    .delay(1, TimeUnit.MINUTES)
-                    .flatMap(Message::delete));
+            action = action.flatMap($ -> channel.sendMessageEmbeds(embed.build()).delay(1, TimeUnit.MINUTES).flatMap(Message::delete));
         } catch (Throwable t) {
             log.log(Level.SEVERE, "Could not scan message for time mention", t);
         } finally {
@@ -175,7 +167,7 @@ public class TimezoneConverter {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

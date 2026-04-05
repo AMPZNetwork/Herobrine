@@ -11,9 +11,13 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,25 +31,24 @@ import java.util.logging.Level;
 
 @Log
 @Service
-@Command("auditlog")
+@Interaction("auditlog")
 @Description("Configure internal Audit Log")
 public class AuditLogService {
     @Autowired AuditLogPreferenceRepo prefRepo;
     @Autowired JDA                    jda;
 
-    @Command(permission = "8")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Show current audit log configuration")
     public MessageEmbed info(Guild guild) {
-        return prefRepo.findById(guild.getIdLong())
-                .map(prefs -> prefs.toEmbed().build())
-                .orElseThrow(() -> new CommandError("No audit log configuration found"));
+        return prefRepo.findById(guild.getIdLong()).map(prefs -> prefs.toEmbed().build()).orElseThrow(() -> Response.of("No audit log configuration found"));
     }
 
-    @Command(permission = "8")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Change audit log configuration")
     public EmbedBuilder config(
-            Guild guild, @Command.Arg @Description("The channel to send the audit log to") TextChannel channel,
-            @Command.Arg(required = false, autoFillProvider = JdaUtil.AutoFillLogLevels.class) @Description("The minimum level to log") @Nullable String level
+            Guild guild, @Parameter @Description("The channel to send the audit log to") TextChannel channel, @Parameter(required = false,
+                                                                                                                         completion = @Completion(provider = JdaUtil.AutoFillLogLevels.class)) @Description(
+                    "The minimum level to log") @Nullable String level
     ) {
         final var logLevel = level != null ? Level.parse(level) : Level.ALL;
 
@@ -93,7 +96,7 @@ public class AuditLogService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

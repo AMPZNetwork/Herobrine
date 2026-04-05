@@ -1,6 +1,5 @@
 package com.ampznetwork.herobrine.component;
 
-import com.ampznetwork.herobrine.component.discord.DiscordProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
@@ -8,9 +7,12 @@ import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
 import org.comroid.api.io.FileFlag;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
@@ -23,7 +25,7 @@ import java.util.logging.Level;
 
 @Log
 @Component
-@Command("maintenance")
+@Interaction("maintenance")
 public class MaintenanceProvider {
     private static final long[]  superadmins;
     private static       boolean enabled;
@@ -46,9 +48,9 @@ public class MaintenanceProvider {
         return enabled;
     }
 
-    @Command(permission = "8")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Toggle maintenance mode")
-    public String toggle(User user, @Command.Arg(required = false) @Nullable Boolean state) {
+    public String toggle(User user, @Parameter(required = false) @Nullable Boolean state) {
         verifySuperadmin(user);
 
         if (state == null) state = !enabled;
@@ -58,11 +60,11 @@ public class MaintenanceProvider {
         return "Maintenance mode turned " + (enabled ? "*on*" : "*off*");
     }
 
-    @Command(permission = "8")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Shutdown the Bot")
     public String shutdown(
-            User user, @Command.Arg(value = "purgecommands",
-                                    required = false) @Description("Whether to purge commands on restart") @Nullable Boolean purgeCommands
+            User user,
+            @Parameter(value = "purgecommands", required = false) @Description("Whether to purge commands on restart") @Nullable Boolean purgeCommands
     ) {
         verifySuperadmin(user);
 
@@ -76,7 +78,7 @@ public class MaintenanceProvider {
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
         //event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }
@@ -86,6 +88,6 @@ public class MaintenanceProvider {
     }
 
     public void verifySuperadmin(User user) {
-        if (!isSuperadmin(user)) throw new CommandError("You are not permitted to use this maintenance command");
+        if (!isSuperadmin(user)) throw Response.of("You are not permitted to use this maintenance command");
     }
 }

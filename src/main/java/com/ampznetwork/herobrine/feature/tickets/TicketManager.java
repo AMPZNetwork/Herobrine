@@ -30,9 +30,10 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.modals.Modal;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -46,7 +47,7 @@ import java.util.logging.Level;
 
 @Log
 @Service
-@Command("ticket")
+@Interaction("ticket")
 public class TicketManager implements AuditLogSender, ErrorLogSender {
     public static final String INTERACTION_OPEN   = "tickets_open";
     public static final String OPTION_TOPIC       = "tickets_option_topic";
@@ -58,16 +59,15 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
     @Autowired TicketTopicRepository         topics;
     @Autowired TicketConfigurationRepository configs;
 
-    @Command
+    @Interaction
     @Description("Set this state of this ticket")
-    public EmbedBuilder state(Guild guild, ThreadChannel channel, User user, @Command.Arg @Description("The state to set the ticket to") TicketState state) {
+    public EmbedBuilder state(Guild guild, ThreadChannel channel, User user, @Parameter @Description("The state to set the ticket to") TicketState state) {
         var guildId = guild.getIdLong();
-        var config  = configs.findById(guildId).orElseThrow(() -> new CommandError("Tickets are not configured"));
-        var ticket  = tickets.findByGuildIdAndThreadId(guildId, channel.getIdLong()).orElseThrow(() -> new CommandError("This is not a ticket channel"));
+        var config = configs.findById(guildId).orElseThrow(() -> Response.of("Tickets are not configured"));
+        var ticket = tickets.findByGuildIdAndThreadId(guildId, channel.getIdLong()).orElseThrow(() -> Response.of("This is not a ticket channel"));
 
-        if (state.privileged && !isPrivileged(guild, config, channel, user, ticket.getTopic()))
-            throw new CommandError("Only team members can apply this state!");
-        else if (user.getIdLong() != ticket.getAuthorId()) throw new CommandError("You are not permitted to use this command!");
+        if (state.privileged && !isPrivileged(guild, config, channel, user, ticket.getTopic())) throw Response.of("Only team members can apply this state!");
+        else if (user.getIdLong() != ticket.getAuthorId()) throw Response.of("You are not permitted to use this command!");
 
         newAuditEntry().guild(guild).level(Level.FINE).message("%s is changing state of %s to %s".formatted(user, ticket, state)).queue();
 
@@ -82,7 +82,7 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
         return EmbedTemplate.success("State of ticket was updated to `%s`".formatted(state.name()));
     }
 
-    @Command
+    @Interaction
     @Description("Open a new support ticket")
     public void open(SlashCommandInteractionEvent event, Guild guild) {
         var config = configs.findById(guild.getIdLong()).orElse(null);
@@ -150,7 +150,7 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

@@ -18,8 +18,9 @@ import org.comroid.annotations.Description;
 import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Builder;
 import org.comroid.api.func.util.Streams;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -65,9 +66,9 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
         }).queue();
     }
 
-    @Command
+    @Interaction
     @Description("Analyze an uploaded log file")
-    public AnalysisResults analyze(@Command.Arg @Description("The haste ID of the log file") String id) {
+    public AnalysisResults analyze(@Parameter @Description("The haste ID of the log file") String id) {
         return results(id);
     }
 
@@ -77,9 +78,7 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
     public AnalysisResults results(@PathVariable("id") String id) {
         var entries = Objects.requireNonNull(hasteService.get(id).getBody(), "paste body")
                 .lines()
-                .flatMap(line -> Arrays.stream(LogLineAdapter.values())
-                        .filter(lla -> lla.test(line))
-                        .map(lla -> lla.apply(line)))
+                .flatMap(line -> Arrays.stream(LogLineAdapter.values()).filter(lla -> lla.test(line)).map(lla -> lla.apply(line)))
                 .collect(new Collector<Builder<? extends LogComponent>, Stack<Builder<? extends ToplevelLogComponent>>, List<ToplevelLogComponent>>() {
                     @Override
                     public Supplier<Stack<Builder<? extends ToplevelLogComponent>>> supplier() {
@@ -95,11 +94,7 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
                                     break;
                                 case ExceptionEntry.Builder ex:
                                     if (ls.isEmpty()) break;
-                                    ls.reversed()
-                                            .stream()
-                                            .flatMap(Streams.cast(LogEntry.Builder.class))
-                                            .findFirst()
-                                            .ifPresent(head -> head.setException(ex));
+                                    ls.reversed().stream().flatMap(Streams.cast(LogEntry.Builder.class)).findFirst().ifPresent(head -> head.setException(ex));
                                     break;
                                 case StackTraceElementEntry.Builder ste:
                                     if (ls.isEmpty()) break;
@@ -140,10 +135,7 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
                     }
                 });
 
-        var unparsed = entries.stream()
-                .flatMap(Streams.cast(PlaintextLogEntry.Builder.class))
-                .map(PlaintextLogEntry.Builder::getText)
-                .toList();
+        var unparsed = entries.stream().flatMap(Streams.cast(PlaintextLogEntry.Builder.class)).map(PlaintextLogEntry.Builder::getText).toList();
         if (!unparsed.isEmpty()) log.fine("Unparseable log entries:\n\t" + String.join("\n\t", unparsed));
 
         return new AnalysisResults(id, entries);
@@ -152,7 +144,7 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

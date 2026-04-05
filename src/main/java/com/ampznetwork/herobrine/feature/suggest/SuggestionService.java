@@ -5,9 +5,9 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Debug;
-import org.comroid.api.text.StringMode;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -19,12 +19,11 @@ import org.springframework.stereotype.Component;
 public class SuggestionService {
     public static final long CHANNEL_ID = Debug.isDebug() ? 1141990824167624734L : 1440076272263893113L;
 
-    @Command("suggest")
+    @Interaction("suggest")
     @Description("Post a suggestion")
     public void suggest(
             User user,
-            @Command.Arg(value = "suggestion",
-                         stringMode = StringMode.GREEDY) @Description("The suggestion") String suggestion
+            @Parameter(value = "suggestion") @Description("The suggestion") String suggestion
     ) {
         var jda     = user.getJDA();
         var channel = jda.getForumChannelById(CHANNEL_ID);
@@ -41,7 +40,7 @@ public class SuggestionService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

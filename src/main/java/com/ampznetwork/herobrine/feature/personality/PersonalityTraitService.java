@@ -12,9 +12,13 @@ import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +30,7 @@ import org.springframework.stereotype.Service;
 
 @Log
 @Service
-@Command("personality")
+@Interaction("personality")
 @Description("Configure Herobrine's personality")
 public class PersonalityTraitService {
     @Autowired MessageTemplateEngine templateEngine;
@@ -37,8 +41,8 @@ public class PersonalityTraitService {
     public void on(GenericEvent event) {
         if (!(event instanceof GenericMessageEvent)) return; // todo remove this antipattern
 
-        var guild     = JdaUtil.getGuild(event).orElse(null);
-        var message   = JdaUtil.getMessage((GenericMessageEvent) event);
+        var guild   = JdaUtil.getGuild(event).orElse(null);
+        var message = JdaUtil.getMessage((GenericMessageEvent) event);
 
         if (guild == null) return;
 
@@ -52,26 +56,26 @@ public class PersonalityTraitService {
         }
     }
 
-    @Command(permission = "16")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Create a new personality trait using a flow")
-    public void create(IReplyCallback callback, Guild guild, Member member, @Command.Arg @Description("The name of the new personality trait") String name) {
-        if (guild == null) throw new CommandError("This only works inside guilds");
+    public void create(IReplyCallback callback, Guild guild, Member member, @Parameter @Description("The name of the new personality trait") String name) {
+        if (guild == null) throw Response.of("This only works inside guilds");
 
         creatorService.findTraitEditor(guild, member).ifPresent(creatorService.editors::remove);
 
         openEditor(callback, guild, member, name, null).queue();
     }
 
-    @Command(permission = "16")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Create a new personality trait using a flow")
     public void edit(
             IReplyCallback callback, Guild guild, Member member,
-            @Command.Arg(autoFillProvider = PersonalityTrait.AutoFillTraitNamesByGuild.class) @Description("The name of the personality trait") String name
+            @Parameter(completion = @Completion(provider = PersonalityTrait.AutoFillTraitNamesByGuild.class)) @Description("The name of the personality trait") String name
     ) {
-        if (guild == null) throw new CommandError("This only works inside guilds");
+        if (guild == null) throw Response.of("This only works inside guilds");
 
         var result = traitRepo.findById(new PersonalityTrait.Key(guild.getIdLong(), name));
-        if (result.isEmpty()) throw new CommandError("Personality trait with name %s not found".formatted(name));
+        if (result.isEmpty()) throw Response.of("Personality trait with name %s not found".formatted(name));
         var trait = result.get();
 
         openEditor(callback, guild, member, name, trait).queue();
@@ -80,7 +84,7 @@ public class PersonalityTraitService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

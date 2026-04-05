@@ -11,8 +11,11 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -23,15 +26,15 @@ import org.springframework.stereotype.Service;
 
 @Log
 @Service
-@Command("ticket-admin")
+@Interaction("ticket-admin")
 public class TicketConfigurer implements AuditLogSender, ErrorLogSender {
     @Autowired TicketConfigurationRepository configs;
 
-    @Command(permission = "16")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Configure the ticketing system")
     public EmbedBuilder configure(
-            Guild guild, @Command.Arg(required = false) @Description("The base channel where ticket threads should be created") @Nullable TextChannel channel,
-            @Command.Arg(required = false) @Description("The base role for all team members") @Nullable Role team
+            Guild guild, @Parameter(required = false) @Description("The base channel where ticket threads should be created") @Nullable TextChannel channel,
+            @Parameter(required = false) @Description("The base role for all team members") @Nullable Role team
     ) {
         if (channel == null) {
             configs.deleteById(guild.getIdLong());
@@ -51,7 +54,7 @@ public class TicketConfigurer implements AuditLogSender, ErrorLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

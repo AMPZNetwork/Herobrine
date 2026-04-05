@@ -8,8 +8,9 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberJoinEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.comroid.annotations.Instance;
 import org.comroid.api.Polyfill;
-import org.comroid.commands.autofill.IAutoFillProvider;
-import org.comroid.commands.impl.CommandUsage;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.model.InteractionContext;
+import org.comroid.interaction.node.ParameterNode;
 
 import java.util.Collections;
 import java.util.Map;
@@ -54,11 +55,11 @@ public class DiscordTrigger<T extends GenericEvent> implements Predicate<Generic
         return eventType.isAssignableFrom(event.getClass());
     }
 
-    public enum AutoFillNames implements IAutoFillProvider {
+    public enum AutoFillNames implements Completion.Provider.OfStrings {
         @Instance INSTANCE;
 
         @Override
-        public Stream<? extends CharSequence> autoFill(CommandUsage usage, String argName, String currentValue) {
+        public Stream<String> findCompletionValues(InteractionContext context, ParameterNode parameter, String currentValue) {
             return VALUES.keySet().stream();
         }
     }

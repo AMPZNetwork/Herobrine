@@ -8,9 +8,12 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
@@ -23,16 +26,16 @@ import java.util.concurrent.CompletableFuture;
 
 @Log
 @Service
-@Command("linkadmin")
+@Interaction("linkadmin")
 public class AccountLinkAdminService {
     @Autowired MaintenanceProvider     maintenance;
     @Autowired LinkedAccountRepository accounts;
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Show account links for a user")
-    public CompletableFuture<MessageEmbed> lookup(@Command.Arg @Description("The user to look up") User user) {
+    public CompletableFuture<MessageEmbed> lookup(@Parameter @Description("The user to look up") User user) {
         var account = accounts.findById(user.getIdLong())
-                .orElseThrow(() -> new CommandError("User %s has not linked any accounts yet".formatted(user)));
+                .orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
 
         return CompletableFuture.supplyAsync(() -> {
             var embed = new EmbedBuilder();
@@ -46,17 +49,17 @@ public class AccountLinkAdminService {
         });
     }
 
-    @Command
+    @Interaction
     @Description("Delete a users entire account linkage data")
     public String drop(
-            User executor, @Command.Arg @Description({
+            User executor, @Parameter @Description({
                     "The user whose data should be deleted", "If this user is yourself, you are automatically permitted"
             }) User user
     ) {
         if (!executor.equals(user)) maintenance.verifySuperadmin(executor);
 
         accounts.findById(user.getIdLong())
-                .orElseThrow(() -> new CommandError("User %s has not linked any accounts yet".formatted(user)));
+                .orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
         accounts.deleteById(user.getIdLong());
 
         return "All account linkage for user %s has been deleted";
@@ -65,7 +68,7 @@ public class AccountLinkAdminService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

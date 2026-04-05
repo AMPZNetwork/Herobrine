@@ -20,9 +20,12 @@ import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.kyori.adventure.util.TriState;
 import org.comroid.annotations.Description;
 import org.comroid.api.text.Markdown;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +41,7 @@ import java.util.function.BiFunction;
 
 @Log
 @Component
-@Command("permission")
+@Interaction("permission")
 public class PermissionManager {
     @Autowired MaintenanceProvider                  maintenance;
     @Autowired UserPermissionAssignmentRepository   userAssignments;
@@ -47,7 +50,7 @@ public class PermissionManager {
 
     public void verify(ISnowflake target, CharSequence permission) {
         if (queryFor(target, permission).toBooleanOrElse(false)) return;
-        throw new CommandError("Insufficient permissions; missing " + Markdown.Code.apply(permission));
+        throw Response.of("Insufficient permissions; missing " + Markdown.Code.apply(permission));
     }
 
     public TriState queryFor(ISnowflake target, CharSequence permission) {
@@ -70,40 +73,40 @@ public class PermissionManager {
         return assignment.map(PermissionAssignment::isSet).map(TriState::byBoolean).orElse(TriState.NOT_SET);
     }
 
-    @Command
+    @Interaction
     @Description("Define user-level permissions")
     public void user(
-            User user, @Command.Arg @Description("Target to define permission for") User target,
-            @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
-            @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
+            User user, @Parameter @Description("Target to define permission for") User target,
+            @Parameter @Description("Permission to set") HerobrinePermission permission,
+            @Parameter(required = false) @Description("Permission state") @Nullable Boolean state
     ) {
         maintenance.verifySuperadmin(user);
 
-        var key = new UserPermissionAssignment.Key(target.getIdLong(), permission);
+        var key = new UserPermissionAssignment.Key(target.getIdLong(), permission.getPrimaryName());
 
         mutate(userAssignments, key, state, (k, b) -> new UserPermissionAssignment(k.userId(), k.key(), b));
     }
 
-    @Command(permission = "8")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Define member-level permissions")
     public void member(
-            @Command.Arg @Description("Target to define permission for") Member target,
-            @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
-            @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
+            @Parameter @Description("Target to define permission for") Member target,
+            @Parameter @Description("Permission to set") HerobrinePermission permission,
+            @Parameter(required = false) @Description("Permission state") @Nullable Boolean state
     ) {
-        var key = new MemberPermissionAssignment.Key(target.getGuild().getIdLong(), target.getIdLong(), permission);
+        var key = new MemberPermissionAssignment.Key(target.getGuild().getIdLong(), target.getIdLong(), permission.getPrimaryName());
 
         mutate(memberAssignments, key, state, (k, b) -> new MemberPermissionAssignment(k.guildId(), k.userId(), k.key(), b));
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Define role-level permissions")
     public void role(
-            @Command.Arg @Description("Target to define permission for") Role target,
-            @Command.Arg(autoFillProvider = HerobrinePermission.AutoFill.class) @Description("Permission to set") String permission,
-            @Command.Arg(required = false) @Description("Permission state") @Nullable Boolean state
+            @Parameter @Description("Target to define permission for") Role target,
+            @Parameter @Description("Permission to set") HerobrinePermission permission,
+            @Parameter(required = false) @Description("Permission state") @Nullable Boolean state
     ) {
-        var key = new RolePermissionAssignment.Key(target.getIdLong(), permission);
+        var key = new RolePermissionAssignment.Key(target.getIdLong(), permission.getPrimaryName());
 
         mutate(roleAssignments, key, state, (k, b) -> new RolePermissionAssignment(k.roleId(), k.key(), b));
     }
@@ -111,7 +114,7 @@ public class PermissionManager {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

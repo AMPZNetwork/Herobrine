@@ -11,11 +11,15 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.impl.CommandUsage;
-import org.comroid.commands.model.CommandError;
-import org.comroid.commands.model.CommandErrorHandler;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.component.error.ErrorHandler;
+import org.comroid.interaction.model.InteractionContext;
+import org.comroid.interaction.model.Response;
+import org.comroid.interaction.registry.InstanceRegistry;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,42 +34,32 @@ import java.util.logging.Level;
 
 @Log
 @Service
-@Command("errorlog")
+@Interaction("errorlog")
 @org.comroid.annotations.Order(-10)
 @Description("Configure internal Error Log")
-public class ErrorLogService implements CommandErrorHandler {
+public class ErrorLogService implements ErrorHandler {
     @Autowired ErrorLogPreferenceRepo prefRepo;
     @Autowired JDA                    jda;
 
-    @Command(permission = "8")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
     @Description("Show current error log configuration")
     public MessageEmbed info(Guild guild) {
-        return prefRepo.findById(guild.getIdLong())
-                .map(prefs -> prefs.toEmbed().build())
-                .orElseThrow(() -> new CommandError("No error log configuration found"));
+        return prefRepo.findById(guild.getIdLong()).map(prefs -> prefs.toEmbed().build()).orElseThrow(() -> Response.of("No error log configuration found"));
     }
 
-    @Command(permission = "8")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
     @Description("Change error log channel configuration")
-    public EmbedBuilder channel(
-            Guild guild,
-            @Command.Arg @Description("The channel to send the error log to") TextChannel channel
-    ) {
-        var guildId   = guild.getIdLong();
-        var channelId = channel.getIdLong();
-        var preferences = prefRepo.findById(guildId)
-                .map(prefs -> prefs.setChannelId(channelId))
-                .orElseGet(() -> new ErrorLogPreferences(guildId, channelId));
+    public EmbedBuilder channel(Guild guild, @Parameter @Description("The channel to send the error log to") TextChannel channel) {
+        var guildId     = guild.getIdLong();
+        var channelId   = channel.getIdLong();
+        var preferences = prefRepo.findById(guildId).map(prefs -> prefs.setChannelId(channelId)).orElseGet(() -> new ErrorLogPreferences(guildId, channelId));
 
         prefRepo.save(preferences);
         return preferences.toEmbed();
     }
 
     @Builder(builderMethodName = "newEntry", buildMethodName = "queue", builderClassName = "EntryAPI")
-    public void queueEntry(
-            Guild guild, @Nullable Level level, Object source, CharSequence message,
-            @Nullable Throwable throwable
-    ) {
+    public void queueEntry(Guild guild, @Nullable Level level, Object source, CharSequence message, @Nullable Throwable throwable) {
         try {
             if (level == null) level = Level.INFO;
 
@@ -82,10 +76,8 @@ public class ErrorLogService implements CommandErrorHandler {
                 return;
             }
 
-            var sourceName = source instanceof ErrorLogSender sender
-                             ? sender.getErrorSourceName()
-                             : String.valueOf(source);
-            var embed = JdaUtil.logEntryEmbed(level, sourceName, message, throwable);
+            var sourceName = source instanceof ErrorLogSender sender ? sender.getErrorSourceName() : String.valueOf(source);
+            var embed      = JdaUtil.logEntryEmbed(level, sourceName, message, throwable);
 
             channel.sendMessageEmbeds(embed).queue();
             log.log(Level.FINE, "[%s @ %s] %s: %s".formatted(level.getName(), guild, sourceName, message), throwable);
@@ -97,22 +89,19 @@ public class ErrorLogService implements CommandErrorHandler {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        var cmdr = event.getApplicationContext().getBean(CommandManager.class);
-        cmdr.register(this);
-        cmdr.addChild(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }
 
     @Override
-    public Optional<String> handleThrowable(CommandUsage usage, Throwable throwable) {
-        usage.fromContext(Guild.class)
-                .findAny()
+    public @org.jspecify.annotations.Nullable Object handle(InteractionContext context, Throwable error) {
+        context.child(Guild.class)
                 .ifPresent(guild -> queueEntry(guild,
                         Level.SEVERE,
-                        usage.getRegisteredTarget(),
+                        context.getNode().getSource().as(InstanceRegistry.class).into(InstanceRegistry::getInstance),
                         "Error in command",
-                        throwable));
+                        error));
 
         return Optional.empty();
     }

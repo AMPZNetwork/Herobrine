@@ -14,10 +14,13 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.comroid.annotations.Description;
 import org.comroid.api.net.Rabbit;
-import org.comroid.api.text.StringMode;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
@@ -37,10 +40,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Log
 @Service
-@Command("chat")
+@Interaction("chat")
 public class ChannelBridgeService {
-    public static final String        ENDPOINT_NAME   = "discord";
-    public static final ChatModConfig CHAT_MOD_CONFIG = new ChatModConfig() {
+    public static final   String                                                       ENDPOINT_NAME   = "discord";
+    public static final   ChatModConfig                                                CHAT_MOD_CONFIG = new ChatModConfig() {
         @Override
         public String getServerName() {
             return "§9DISCORD";
@@ -56,20 +59,18 @@ public class ChannelBridgeService {
             return "&7[%server_name%&7] #&6%channel_name%&7 <%player_name%&7> &r%message%";
         }
     };
-
-    @Autowired JDA                       jda;
-    @Autowired ChannelBridgeConfigRepo   channelBridges;
-    @Autowired JacksonPacketConverter    packetConverter;
-    @Autowired ApplicationEventPublisher publisher;
-
-    private final @Getter Collection<LoadedBridge>                                     loaded         = new HashSet<>();
-    private final         Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels = new ConcurrentHashMap<>();
+    private final @Getter Collection<LoadedBridge>                                     loaded          = new HashSet<>();
+    private final         Map<@NotNull Long, Rabbit.Exchange.Route<ChatMessagePacket>> systemChannels  = new ConcurrentHashMap<>();
+    @Autowired            JDA                                                          jda;
+    @Autowired            ChannelBridgeConfigRepo                                      channelBridges;
+    @Autowired            JacksonPacketConverter                                       packetConverter;
+    @Autowired            ApplicationEventPublisher                                    publisher;
 
     public @Nullable Rabbit.Exchange.Route<ChatMessagePacket> getSystemChannel(long guildId) {
         return systemChannels.getOrDefault(guildId, null);
     }
 
-    @Command(permission = "16")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Reloads channel bridge configurations and listeners")
     public String reload(@Nullable Guild guild) {
         for (var bridge : loaded.toArray(LoadedBridge[]::new)) {
@@ -83,7 +84,7 @@ public class ChannelBridgeService {
             var key = "chat." + config.getChannelName();
 
             var channel = jda.getTextChannelById(config.getChannelId());
-            if (channel == null) throw new CommandError("Could not find text channel by id: `%d`".formatted(config.getChannelId()));
+            if (channel == null) throw Response.of("Could not find text channel by id: `%d`".formatted(config.getChannelId()));
 
             var route = Rabbit.of("ChatMod Channel Bridge", config.getRabbitUri())
                     .assertion("Could not instantiate Rabbit")
@@ -118,12 +119,12 @@ public class ChannelBridgeService {
         return "Loaded %d channel bridges and %d system channels".formatted(loaded.size(), systemChannels.size());
     }
 
-    @Command
+    @Interaction
     @Description("Shout a message into a specific channel")
     public void shout(
             Guild guild, User user,
-            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description("The channel to shout into") String channel,
-            @Command.Arg(stringMode = StringMode.GREEDY) @Description("The message to shout") String message
+            @Parameter(completion = @Completion(provider = GuildChannelNameAutoFillProvider.class)) @Description("The channel to shout into") String channel,
+            @Parameter @Description("The message to shout") String message
     ) {
         loaded.stream().filter(bridge -> bridge.getConfig().getChannelName().equals(channel)).forEach(bridge -> bridge.handle(guild, user, message));
     }
@@ -143,7 +144,7 @@ public class ChannelBridgeService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         reload(null);
 

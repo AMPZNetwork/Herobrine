@@ -1,13 +1,17 @@
 package com.ampznetwork.herobrine.component.web;
 
+import com.ampznetwork.herobrine.component.MaintenanceProvider;
 import lombok.extern.java.Log;
+import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Default;
 import org.comroid.annotations.Description;
 import org.comroid.api.data.seri.adp.JSON;
 import org.comroid.api.net.REST;
 import org.comroid.api.text.Markdown;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -20,13 +24,18 @@ import java.util.stream.Collectors;
 @Log
 @Component
 public class InteractiveRequestService {
-    @Command
+    @Autowired MaintenanceProvider maintenance;
+
+    @Interaction
     @Description("Send a HTTP request")
-    public static CompletableFuture<String> request(
-            @Command.Arg @Description("URI to send a request to") String uri,
-            @Command.Arg(required = false) @Default("GET") @Description("HTTP method to use; defaults to GET") REST.Method method,
-            @Command.Arg(required = false) @Default("") @Description("Request body to use; default is empty") String body
+    public CompletableFuture<String> request(
+            User user,
+            @Parameter @Description("URI to send a request to") String uri,
+            @Parameter(required = false) @Default("GET") @Description("HTTP method to use; defaults to GET") REST.Method method,
+            @Parameter(required = false) @Default("") @Description("Request body to use; default is empty") String body
     ) {
+        maintenance.verifySuperadmin(user);
+
         return REST.request(method, uri, body == null ? null : JSON.Parser.parse(body))
                 .execute()
                 .thenApply(response -> {
@@ -43,8 +52,7 @@ public class InteractiveRequestService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        //event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

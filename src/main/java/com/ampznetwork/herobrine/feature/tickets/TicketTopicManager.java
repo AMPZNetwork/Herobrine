@@ -21,9 +21,13 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +42,7 @@ import java.util.Objects;
 
 @Log
 @Service
-@Command("ticket-topic")
+@Interaction("ticket-topic")
 public class TicketTopicManager {
     public static final String INTERACTION_CREATE  = "ticket_topic_create";
     public static final String INTERACTION_EDIT    = "ticket_topic_edit";
@@ -50,26 +54,29 @@ public class TicketTopicManager {
     @Autowired TicketRepository      tickets;
     @Autowired TicketTopicRepository topics;
 
-    @Command(permission = "17179869184")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Create a new ticket topic")
     public void create(SlashCommandInteractionEvent event, Guild guild) {
         event.replyModal(createEditorModal(INTERACTION_CREATE, null, TicketTopic.builder()).build()).queue();
     }
 
-    @Command(permission = "17179869184")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Edit an existing ticket topic")
-    public void edit(SlashCommandInteractionEvent event, Guild guild, @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String name) {
+    public void edit(SlashCommandInteractionEvent event, Guild guild, @Parameter(completion = @Completion(provider = TicketTopic.AutoFill.class)) String name) {
         var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), name))
-                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(name)));
+                .orElseThrow(() -> Response.of("Ticket topic with name `%s` was not found".formatted(name)));
 
         event.replyModal(createEditorModal(INTERACTION_EDIT + '$' + name, topic, TicketTopic.builder()).build()).queue();
     }
 
-    @Command(permission = "17179869184")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Delete an existing ticket topic")
-    public MessageCreateData delete(SlashCommandInteractionEvent event, Guild guild, @Command.Arg(autoFillProvider = TicketTopic.AutoFill.class) String name) {
+    public MessageCreateData delete(
+            SlashCommandInteractionEvent event, Guild guild,
+            @Parameter(completion = @Completion(provider = TicketTopic.AutoFill.class)) String name
+    ) {
         var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), name))
-                .orElseThrow(() -> new CommandError("Ticket topic with name `%s` was not found".formatted(name)));
+                .orElseThrow(() -> Response.of("Ticket topic with name `%s` was not found".formatted(name)));
 
         var affectedTicketCount = tickets.countAllByGuildIdAndTopic(guild.getIdLong(), topic);
 
@@ -136,7 +143,7 @@ public class TicketTopicManager {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

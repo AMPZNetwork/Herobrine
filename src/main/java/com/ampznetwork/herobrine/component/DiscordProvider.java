@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component.discord;
+package com.ampznetwork.herobrine.component;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
 import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
@@ -8,13 +8,10 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import org.comroid.api.io.FileFlag;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.impl.discord.JdaCommandAdapter;
+import org.comroid.interaction.InteractionCore;
 import org.comroid.util.JdaUtil;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -56,19 +53,10 @@ public class DiscordProvider implements net.dv8tion.jda.api.hooks.EventListener,
         }
     }
 
-    @Bean
-    @ConditionalOnBean({ CommandManager.class, JDA.class })
-    public JdaCommandAdapter cmdrJdaAdapter(@Autowired CommandManager cmdr, @Autowired JDA jda) {
-        var adp = new JdaCommandAdapter(cmdr, jda);
-        adp.setPurgeCommands(FileFlag.consume(COMMAND_PURGE_FILE));
-        cmdr.addChild(adp);
-        return adp;
-    }
-
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

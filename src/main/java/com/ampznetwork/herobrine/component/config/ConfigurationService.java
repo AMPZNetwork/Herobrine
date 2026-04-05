@@ -5,7 +5,7 @@ import com.ampznetwork.herobrine.component.config.model.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
 import org.comroid.api.java.ResourceLoader;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
@@ -35,7 +35,7 @@ public class ConfigurationService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

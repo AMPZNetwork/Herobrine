@@ -26,10 +26,11 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.comroid.annotations.Description;
 import org.comroid.api.text.Markdown;
 import org.comroid.api.tree.UncheckedCloseable;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.impl.discord.JdaCommandAdapter;
-import org.comroid.commands.model.CommandPrivacyLevel;
+import org.comroid.commands.impl.discord.JdaCommandAdapter.ResponseCallback;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
@@ -53,7 +54,7 @@ import java.util.regex.Pattern;
 
 @Log
 @Component
-@Command("template")
+@Interaction("template")
 @ConditionalOnBean({ MessageTemplateEngine.class })
 public class InteractiveTemplateService {
     private static final Pattern SHORTCUT_REMOVE_LINE = Pattern.compile("-(\\d+)");
@@ -64,17 +65,16 @@ public class InteractiveTemplateService {
 
     @Autowired MessageTemplateEngine templateEngine;
 
-    @Command(permission = "8192", privacy = CommandPrivacyLevel.PUBLIC)
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Start interactive template mode")
-    public JdaCommandAdapter.ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
+    public ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
         var result = findInteractiveMode(channel, user);
 
         if (result.isPresent()) try (var mode = result.get()) {
             return mode.createExitCallback();
         }
 
-        return new JdaCommandAdapter.ResponseCallback(new EmbedBuilder().setDescription(
-                "Send lines to append code to this template..."), message -> {
+        return new ResponseCallback(new EmbedBuilder().setDescription("Send lines to append code to this template..."), message -> {
             var mode = new InteractiveMode(channel, user, message);
             interactive.add(mode);
             return new CompletedRestAction<>(jda, message);
@@ -140,16 +140,13 @@ public class InteractiveTemplateService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }
 
     private void handleMessageDelete(long messageId) {
-        interactive.stream()
-                .filter(it -> it.infoMessage.getIdLong() == messageId)
-                .toList()
-                .forEach(InteractiveMode::close);
+        interactive.stream().filter(it -> it.infoMessage.getIdLong() == messageId).toList().forEach(InteractiveMode::close);
     }
 
     private Optional<InteractiveMode> findInteractiveMode(MessageChannel channel, UserSnowflake user) {
@@ -181,16 +178,10 @@ public class InteractiveTemplateService {
         public EmbedBuilder infoEmbed() {
             var embed = new EmbedBuilder().setTitle("Interactive template mode")
                     .setDescription(Markdown.CodeBlock.apply(codeWithLines(buffer.toString())))
-                    .addField("Remove line",
-                            "Write `-<line number>` to remove a specific line from the template",
-                            false)
-                    .addField("Append to line",
-                            "Write `+<line number> <script>` to append to a line of the template",
-                            false)
+                    .addField("Remove line", "Write `-<line number>` to remove a specific line from the template", false)
+                    .addField("Append to line", "Write `+<line number> <script>` to append to a line of the template", false)
                     .addField("Modify line", "Write `#<line number> <script>` to modify a line of the template", false)
-                    .addField("Clear template",
-                            "Write `!clear` to clear the entire template (Warning: Cannot be undone!",
-                            false)
+                    .addField("Clear template", "Write `!clear` to clear the entire template (Warning: Cannot be undone!", false)
                     .setFooter("Available shorthand commands");
 
             EmbedComponentReference.author.accept(embed, user);
@@ -213,9 +204,8 @@ public class InteractiveTemplateService {
             return ("%0" + lineCount + "d").formatted(lineIndex);
         }
 
-        public JdaCommandAdapter.ResponseCallback createExitCallback() {
-            return new JdaCommandAdapter.ResponseCallback(createExitMessage(),
-                    message -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE));
+        public ResponseCallback createExitCallback() {
+            return new ResponseCallback(createExitMessage(), message -> message.addReaction(Constant.EMOJI_EVAL_TEMPLATE));
         }
 
         private MessageCreateBuilder createExitMessage() {

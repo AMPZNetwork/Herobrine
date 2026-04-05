@@ -22,8 +22,11 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Instance;
-import org.comroid.commands.autofill.IAutoFillProvider;
-import org.comroid.commands.impl.CommandUsage;
+import org.comroid.api.attr.Described;
+import org.comroid.api.attr.Named;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.model.InteractionContext;
+import org.comroid.interaction.node.ParameterNode;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
@@ -41,7 +44,7 @@ import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 @AllArgsConstructor
 @IdClass(ReactionRoleSet.Key.class)
 @Table(uniqueConstraints = { @UniqueConstraint(columnNames = "message_id") })
-public class ReactionRoleSet {
+public class ReactionRoleSet implements Named, Described {
     @Id long   guildId;
     @Id String name;
     String description;
@@ -122,26 +125,26 @@ public class ReactionRoleSet {
         public abstract boolean mayPerformAction(GenericMessageReactionEvent event);
     }
 
-    public enum AutoFillSetNames implements IAutoFillProvider {
+    public enum AutoFillSetNames implements Completion.Provider {
         @Instance INSTANCE;
 
         @Override
-        public Stream<? extends CharSequence> autoFill(CommandUsage usage, String argName, String currentValue) {
-            return usage.fromContext(Guild.class)
+        public Stream<Completion.Option> findCompletionOptions(InteractionContext context, ParameterNode parameter, String currentValue) {
+            return context.children(Guild.class)
                     .flatMap(guild -> bean(ReactionSetRepo.class).findAllByGuildId(guild.getIdLong()).stream())
-                    .map(ReactionRoleSet::getName);
+                    .map(Completion.Option::new);
         }
     }
 
-    public enum AutoFillRoleNames implements IAutoFillProvider {
+    public enum AutoFillRoleNames implements Completion.Provider {
         @Instance INSTANCE;
 
         @Override
-        public Stream<? extends CharSequence> autoFill(CommandUsage usage, String argName, String currentValue) {
-            return usage.fromContext(Guild.class)
+        public Stream<Completion.Option> findCompletionOptions(InteractionContext context, ParameterNode parameter, String currentValue) {
+            return context.children(Guild.class)
                     .flatMap(guild -> bean(ReactionSetRepo.class).findAllByGuildId(guild.getIdLong()).stream())
                     .flatMap(set -> set.getRoles().stream())
-                    .map(ReactionRoleBinding::getName);
+                    .map(ReactionRoleBinding::toCompletionOption);
         }
     }
 

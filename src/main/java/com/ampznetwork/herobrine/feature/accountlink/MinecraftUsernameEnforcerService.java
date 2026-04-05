@@ -16,8 +16,12 @@ import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.events.guild.member.update.GuildMemberUpdateNicknameEvent;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,15 +40,18 @@ import java.util.stream.Collectors;
 
 @Log
 @Service
-@Command("mc-username-enforcer")
+@Interaction("mc-username-enforcer")
 public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLogSender {
     @Autowired JDA                                       jda;
     @Autowired MinecraftUsernameEnforcerConfigRepository enforcerConfigRepo;
     @Autowired LinkedAccountRepository                   linkedAccounts;
 
-    @Command(permission = "134217728")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
     @Description("Change Minecraft username enforcer configuration")
-    public String configure(Guild guild, @Command.Arg(autoFill = { "yes", "no" }) @Description("Whether to forcibly change nicknames") String enforce) {
+    public String configure(
+            Guild guild,
+            @Parameter(completion = @Completion(strings = { "yes", "no" })) @Description("Whether to forcibly change nicknames") String enforce
+    ) {
         var guildId = guild.getIdLong();
         var config  = enforcerConfigRepo.findById(guildId).orElse(null);
         var flag = "yes".equalsIgnoreCase(enforce);
@@ -62,7 +69,7 @@ public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLo
         update(null);
     }
 
-    @Command(permission = "134217728")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
     @Description("Update all nicknames in this guild")
     public void update(@Nullable Guild guild) {
         for (var config : guild == null ? enforcerConfigRepo.findAll() : enforcerConfigRepo.findById(guild.getIdLong()).stream().toList()) {
@@ -143,7 +150,7 @@ public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLo
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

@@ -21,8 +21,11 @@ import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,13 +47,13 @@ import java.util.logging.Level;
 
 @Log
 @Service
-@Command("link_role")
+@Interaction("link_role")
 public class LinkRoleAssignmentService implements AuditLogSender {
     @Autowired JDA                      jda;
     @Autowired LinkRoleConfigRepository linkRoleConfigs;
     @Autowired LinkedAccountRepository  linkedAccounts;
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Refresh linked roles")
     public Object refresh(Guild guild) {
         var config = linkRoleConfigs.findById(guild.getIdLong()).orElse(null);
@@ -157,10 +160,10 @@ public class LinkRoleAssignmentService implements AuditLogSender {
         });
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Configure the role to be set for users with a linked Minecraft account")
     public String configure_minecraft(
-            Guild guild, @Command.Arg(required = false) @Description({
+            Guild guild, @Parameter(required = false) @Description({
                     "The role to be assigned", "Set nothing to remove the role"
             }) @Nullable Role role
     ) {
@@ -182,7 +185,7 @@ public class LinkRoleAssignmentService implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

@@ -26,8 +26,10 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -47,7 +49,7 @@ import java.util.function.Predicate;
 
 @Log
 @Service
-@Command("embed")
+@Interaction("embed")
 public class EmbedBuilderService implements AuditLogSender {
     public static final String INTERACTION_EDIT         = "Edit Embed";
     public static final String INTERACTION_ADD_FIELD    = "edit-field-add";
@@ -62,7 +64,7 @@ public class EmbedBuilderService implements AuditLogSender {
 
     private final Map<@NotNull Long, @NotNull EmbedEditorSession> activeEdits = new ConcurrentHashMap<>();
 
-    @Command(value = "create", permission = "8192")
+    @Interaction(value = "create", definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Create a new embed message")
     public MessageCreateData create(User user, MessageChannelUnion channel) {
         var messageCreateData = createEmbedEditMenu(null).build();
@@ -204,7 +206,7 @@ public class EmbedBuilderService implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         event.getApplicationContext()
                 .getBean(JDA.class)

@@ -8,6 +8,7 @@ import com.ampznetwork.herobrine.feature.personality.model.RandomDetail;
 import com.ampznetwork.herobrine.repo.PersonalityTraitRepo;
 import com.ampznetwork.herobrine.trigger.DiscordTrigger;
 import com.ampznetwork.herobrine.util.Constant;
+import com.ampznetwork.herobrine.util.JdaUtil;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.java.Log;
@@ -33,9 +34,7 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.comroid.api.Polyfill;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.impl.discord.JdaCommandAdapter;
-import org.comroid.util.JdaUtil;
+import org.comroid.interaction.InteractionCore;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +58,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-
 @Log
 @Service
 @ConditionalOnBean({ PersonalityTraitService.class })
@@ -81,7 +79,6 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     final Collection<TraitEditor> editors = new ArrayList<>();
 
     @Autowired PersonalityTraitRepo personalities;
-    @Autowired JdaCommandAdapter jdaCommandAdapter;
 
     Optional<TraitEditor> findTraitEditor(Guild guild, UserSnowflake user) {
         return editors.stream().filter(creator -> creator.guild.equals(guild) && creator.user.equals(user)).findAny();
@@ -90,18 +87,15 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }
 
     @EventListener
     public void on(@NonNull ButtonInteractionEvent event) {
-        if (!List.of(INTERACTION_EDIT_TRIGGER,
-                INTERACTION_EDIT_FILTER,
-                INTERACTION_EDIT_RANDOM,
-                INTERACTION_EDIT_TEMPLATE,
-                INTERACTION_SUMBIT).contains(event.getComponentId())) return;
+        if (!List.of(INTERACTION_EDIT_TRIGGER, INTERACTION_EDIT_FILTER, INTERACTION_EDIT_RANDOM, INTERACTION_EDIT_TEMPLATE, INTERACTION_SUMBIT)
+                .contains(event.getComponentId())) return;
 
         var guild  = event.getGuild();
         var editor = findTraitEditor(guild, event.getMember()).orElse(null);
@@ -129,23 +123,16 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
                 var key    = trait.key();
                 var result = personalities.findById(key);
 
-                if (result.isPresent()) wrapErrors(guild,
-                        "Clearing previous trait value",
-                        () -> personalities.deleteById(key));
+                if (result.isPresent()) wrapErrors(guild, "Clearing previous trait value", () -> personalities.deleteById(key));
 
                 if (null != wrapErrors(guild, "Saving new trait", () -> personalities.save(trait))) {
-                    if (null != wrapErrors(guild,
-                            "Removing old editor",
-                            () -> editors.remove(editor))) editor.infoMessage.delete().queue();
+                    if (null != wrapErrors(guild, "Removing old editor", () -> editors.remove(editor))) editor.infoMessage.delete().queue();
                 }
 
-                newAuditEntry().level(Level.INFO)
-                        .message("%s modified personality trait %s".formatted(event.getMember(), trait))
-                        .queue();
+                newAuditEntry().level(Level.INFO).message("%s modified personality trait %s".formatted(event.getMember(), trait)).queue();
 
                 event.replyEmbeds(new EmbedBuilder().setTitle(Constant.EMOJI_SUCCESS.getFormatted() + " Personality Trait was successfully edited")
-                                .setDescription("You will need to reload listeners using %s".formatted(jdaCommandAdapter.getNamedCommands()
-                                        .getOrDefault("personality reload", null)))
+                                .setDescription("You will need to reload listeners using /personality reload")
                                 .setColor(Constant.COLOR_SUCCESS)
                                 .setFooter(Constant.STRING_SELF_DESTRUCT.formatted(3))
                                 .build())
@@ -161,39 +148,29 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
 
     @EventListener
     public void on(@NonNull ModalInteractionEvent event) {
-        if (!List.of(INTERACTION_EDIT_TRIGGER,
-                INTERACTION_EDIT_FILTER,
-                INTERACTION_EDIT_RANDOM,
-                INTERACTION_EDIT_TEMPLATE,
-                INTERACTION_SUMBIT).contains(event.getModalId())) return;
+        if (!List.of(INTERACTION_EDIT_TRIGGER, INTERACTION_EDIT_FILTER, INTERACTION_EDIT_RANDOM, INTERACTION_EDIT_TEMPLATE, INTERACTION_SUMBIT)
+                .contains(event.getModalId())) return;
 
         var editor = findTraitEditor(event.getGuild(), event.getMember()).orElseThrow();
 
         switch (event.getModalId()) {
             case INTERACTION_EDIT_TRIGGER -> {
-                var triggerName = Objects.requireNonNull(event.getValue(OPTION_TRIGGER), "trigger")
-                        .getAsStringList()
-                        .getFirst();
-                var trigger = DiscordTrigger.valueOf(triggerName);
+                var triggerName = Objects.requireNonNull(event.getValue(OPTION_TRIGGER), "trigger").getAsStringList().getFirst();
+                var trigger     = DiscordTrigger.valueOf(triggerName);
 
                 editor.builder.discordTrigger(Polyfill.uncheckedCast(trigger));
             }
             case INTERACTION_EDIT_FILTER -> {
-                var filterMethodName = Objects.requireNonNull(event.getValue(OPTION_FILTER_METHOD), "method")
-                        .getAsStringList()
-                        .getFirst();
-                var filterMethod = ContentFilter.StringMatching.valueOf(filterMethodName);
+                var filterMethodName = Objects.requireNonNull(event.getValue(OPTION_FILTER_METHOD), "method").getAsStringList().getFirst();
+                var filterMethod     = ContentFilter.StringMatching.valueOf(filterMethodName);
 
-                var filterPattern = Objects.requireNonNull(event.getValue(OPTION_FILTER_PATTERN), "pattern")
-                        .getAsString();
+                var filterPattern = Objects.requireNonNull(event.getValue(OPTION_FILTER_PATTERN), "pattern").getAsString();
 
                 editor.builder.contentFilter(new ContentFilter(filterMethod, filterPattern));
             }
             case INTERACTION_EDIT_RANDOM -> {
-                var randomChance = Integer.parseInt(Objects.requireNonNull(event.getValue(OPTION_RANDOM_CHANCE),
-                        "chance").getAsString());
-                var randomLimes = Integer.parseInt(Objects.requireNonNull(event.getValue(OPTION_RANDOM_LIMES), "limes")
-                        .getAsString());
+                var randomChance = Integer.parseInt(Objects.requireNonNull(event.getValue(OPTION_RANDOM_CHANCE), "chance").getAsString());
+                var randomLimes  = Integer.parseInt(Objects.requireNonNull(event.getValue(OPTION_RANDOM_LIMES), "limes").getAsString());
 
                 editor.builder.randomDetail(new RandomDetail(randomChance, randomLimes));
             }
@@ -209,8 +186,7 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
 
                 String template;
                 try (
-                        var is = attachments.getFirst().getProxy().download().join();
-                        var isr = new InputStreamReader(is); var br = new BufferedReader(isr)
+                        var is = attachments.getFirst().getProxy().download().join(); var isr = new InputStreamReader(is); var br = new BufferedReader(isr)
                 ) {
                     template = br.lines().collect(Collectors.joining("\n"));
                 } catch (IOException e) {
@@ -241,15 +217,11 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     }
 
     private Modal.Builder createEditFilterModal(@Nullable TraitEditor editor) {
-        var contentFilter = Optional.ofNullable(editor)
-                .map(x -> x.builder.build())
-                .map(PersonalityTrait::getContentFilter);
+        var contentFilter = Optional.ofNullable(editor).map(x -> x.builder.build()).map(PersonalityTrait::getContentFilter);
         return Modal.create(INTERACTION_EDIT_FILTER, "Editing Filter")
                 .addComponents(Label.of("Select matching Method",
                                 StringSelectMenu.create(OPTION_FILTER_METHOD)
-                                        .addOptions(Arrays.stream(ContentFilter.StringMatching.values())
-                                                .map(ContentFilter.StringMatching::getOption)
-                                                .toList())
+                                        .addOptions(Arrays.stream(ContentFilter.StringMatching.values()).map(ContentFilter.StringMatching::getOption).toList())
                                         .setDefaultOptions(contentFilter.map(ContentFilter::getMatching)
                                                 .map(ContentFilter.StringMatching::getOption)
                                                 .orElseGet(ContentFilter.StringMatching.CONTAINS::getOption))
@@ -261,9 +233,7 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     }
 
     private Modal.Builder createEditRandomModal(@Nullable TraitEditor editor) {
-        var randomDetail = Optional.ofNullable(editor)
-                .map(x -> x.builder.build())
-                .map(PersonalityTrait::getRandomDetail);
+        var randomDetail = Optional.ofNullable(editor).map(x -> x.builder.build()).map(PersonalityTrait::getRandomDetail);
         return Modal.create(INTERACTION_EDIT_RANDOM, "Editing randomness")
                 .addComponents(Label.of("Select chance",
                                 TextInput.create(OPTION_RANDOM_CHANCE, TextInputStyle.SHORT)
@@ -278,17 +248,13 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
     }
 
     private Modal.Builder createEditTemplateModal(@Nullable TraitEditor editor) {
-        var template = Optional.ofNullable(editor)
-                .map(x -> x.builder.build())
-                .map(PersonalityTrait::getTemplateScript)
-                .orElse("<no template>");
+        var template = Optional.ofNullable(editor).map(x -> x.builder.build()).map(PersonalityTrait::getTemplateScript).orElse("<no template>");
         return Modal.create(INTERACTION_EDIT_TEMPLATE, "Editing template").addComponents(TextDisplay.of(("""
                         Current template: ```dmt
                         %s
                         ```
                         -# Please paste a template script OR select a template file to upload""").formatted(template)),
-                Label.of("Paste template",
-                        TextInput.create(OPTION_TEMPLATE_PASTE, TextInputStyle.PARAGRAPH).setRequired(false).build()),
+                Label.of("Paste template", TextInput.create(OPTION_TEMPLATE_PASTE, TextInputStyle.PARAGRAPH).setRequired(false).build()),
                 Label.of("Upload file", AttachmentUpload.create(OPTION_TEMPLATE_FILE).setRequired(false).build()));
     }
 

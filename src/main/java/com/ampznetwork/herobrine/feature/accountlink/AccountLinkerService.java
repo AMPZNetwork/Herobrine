@@ -17,9 +17,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.comroid.annotations.Description;
 import org.comroid.api.net.Token;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,16 +39,16 @@ import java.util.concurrent.TimeUnit;
 
 @Log
 @Service
-@Command("link")
+@Interaction("link")
 public class AccountLinkerService {
     private final Collection<PendingLink>   pending = new HashSet<>();
     @Autowired    LinkedAccountRepository   linkedAccounts;
     @Autowired    ChannelBridgeService      minecraftChannelBridgeService;
     @Autowired    ApplicationEventPublisher eventPublisher;
 
-    @Command
+    @Interaction
     @Description("Verify account linkage after requesting a token")
-    public CompletableFuture<String> verify(Guild guild, UserSnowflake user, @Command.Arg @Description("The token you received") String token) {
+    public CompletableFuture<String> verify(Guild guild, UserSnowflake user, @Parameter @Description("The token you received") String token) {
         return CompletableFuture.supplyAsync(() -> {
             var result = pending.stream().filter(link -> link.userId() == user.getIdLong() && link.token().equals(token)).findAny();
 
@@ -63,7 +64,7 @@ public class AccountLinkerService {
                         var playerId = Player.fetchId(mc.minecraftUsername).join();
                         account = LinkedAccount.builder().discordId(user.getIdLong()).minecraftId(playerId).build();
                     }
-                    default -> throw new CommandError("Internal error\n-# Please contact the bot developers");
+                    default -> throw Response.of("Internal error\n-# Please contact the bot developers");
                 }
 
             linkedAccounts.save(account);
@@ -73,9 +74,9 @@ public class AccountLinkerService {
         });
     }
 
-    @Command
+    @Interaction
     @Description("Request a token to link your Minecraft account")
-    public CompletableFuture<String> minecraft(Guild guild, UserSnowflake user, @Command.Arg @Description("Minecraft Username to be linked") String username) {
+    public CompletableFuture<String> minecraft(Guild guild, UserSnowflake user, @Parameter @Description("Minecraft Username to be linked") String username) {
         return CompletableFuture.supplyAsync(() -> {
             var result = linkedAccounts.findById(user.getIdLong()).or(() -> {
                 var minecraftId = Player.fetchId(username).join();
@@ -99,7 +100,7 @@ public class AccountLinkerService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

@@ -15,8 +15,9 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import org.comroid.annotations.Instance;
 import org.comroid.api.attr.Named;
-import org.comroid.commands.autofill.IAutoFillProvider;
-import org.comroid.commands.impl.CommandUsage;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.model.InteractionContext;
+import org.comroid.interaction.node.ParameterNode;
 
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
@@ -46,12 +47,12 @@ public class PersonalityTrait implements Named, BooleanSupplier {
         return new Key(guildId, name);
     }
 
-    public enum AutoFillTraitNamesByGuild implements IAutoFillProvider {
+    public enum AutoFillTraitNamesByGuild implements Completion.Provider.OfStrings {
         @Instance INSTANCE;
 
         @Override
-        public Stream<? extends CharSequence> autoFill(CommandUsage usage, String argName, String currentValue) {
-            return usage.fromContext(Guild.class)
+        public Stream<String> findCompletionValues(InteractionContext context, ParameterNode parameter, String currentValue) {
+            return context.children(Guild.class)
                     .flatMap(guild -> bean(PersonalityTraitRepo.class).findAllByGuildId(guild.getIdLong()).stream())
                     .map(PersonalityTrait::getName);
         }

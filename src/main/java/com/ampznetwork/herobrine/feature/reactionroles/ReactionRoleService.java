@@ -36,9 +36,13 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +61,7 @@ import java.util.stream.Stream;
 
 @Log
 @Service
-@Command("roles")
+@Interaction("roles")
 @Description("Configure reaction roles")
 public class ReactionRoleService implements AuditLogSender {
     public static final String COMPONENT_ID_ROLESET_EDIT = "roleset-edit-";
@@ -74,12 +78,13 @@ public class ReactionRoleService implements AuditLogSender {
     @Autowired ReactionSetRepo setRepo;
     @Autowired JDA             jda;
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Resend reaction role messages")
     @SuppressWarnings("UnusedReturnValue")
     public String resend(
-            Guild guild, Member member, @Command.Arg(required = false,
-                                                     autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) @Description("The reaction set to resend") @Nullable String set
+            Guild guild, Member member, @Parameter(required = false,
+                                                   completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) @Description(
+                    "The reaction set to resend") @Nullable String set
     ) {
         var sets = setRepo.findAllByGuildId(guild.getIdLong());
         if (sets.isEmpty()) return "There are no configured reaction roles";
@@ -108,13 +113,13 @@ public class ReactionRoleService implements AuditLogSender {
         return "Reaction messages were resent";
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Create a set of role reactions")
     public String createset(
-            Guild guild, Member member, @Command.Arg String name, @Command.Arg String description, @Command.Arg TextChannel channel,
-            @Command.Arg ReactionRoleSet.Method method
+            Guild guild, Member member, @Parameter String name, @Parameter String description, @Parameter TextChannel channel,
+            @Parameter ReactionRoleSet.Method method
     ) {
-        if (name.contains("-")) throw new CommandError("Name cannot contain dashes (`-`)");
+        if (name.contains("-")) throw Response.of("Name cannot contain dashes (`-`)");
 
         var set = new ReactionRoleSet(guild.getIdLong(), name, description, channel.getIdLong(), method, null, new ArrayList<>());
 
@@ -124,9 +129,9 @@ public class ReactionRoleService implements AuditLogSender {
         return "Reaction role set `%s` was created".formatted(name);
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Remove a set of role reactions")
-    public String removeset(Guild guild, Member member, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String name) {
+    public String removeset(Guild guild, Member member, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String name) {
         var guildId = guild.getIdLong();
 
         if (setRepo.findById(new ReactionRoleSet.Key(guildId, name)).isEmpty()) return "There is no reaction set with that name";
@@ -136,9 +141,9 @@ public class ReactionRoleService implements AuditLogSender {
         return "Role reaction set removed";
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Edit an existing set of role reactions")
-    public MessageCreateData editset(Guild guild, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set) {
+    public MessageCreateData editset(Guild guild, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set) {
         final var guildId = guild.getIdLong();
 
         return setRepo.findById(new ReactionRoleSet.Key(guildId, set)).map(roleSet -> {
@@ -149,16 +154,16 @@ public class ReactionRoleService implements AuditLogSender {
                     Button.danger(COMPONENT_ID_ROLE_REMOVE + set, "Remove Role...")));
 
             return message.build();
-        }).orElseThrow(() -> new CommandError("Could not find reaction role set with name `%s`".formatted(set)));
+        }).orElseThrow(() -> Response.of("Could not find reaction role set with name `%s`".formatted(set)));
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Create a new reaction role")
     public Object createrole(
-            Guild guild, Member member, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set, @Command.Arg Role role,
-            @Command.Arg String emoji, @Command.Arg String name, @Command.Arg String description
+            Guild guild, Member member, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set,
+            @Parameter Role role, @Parameter String emoji, @Parameter String name, @Parameter String description
     ) {
-        var roleSet = setRepo.findById(new ReactionRoleSet.Key(guild.getIdLong(), set)).orElseThrow(() -> new CommandError("No such roleset: " + set));
+        var roleSet = setRepo.findById(new ReactionRoleSet.Key(guild.getIdLong(), set)).orElseThrow(() -> Response.of("No such roleset: " + set));
 
         if (roleSet.findBinding(name).isPresent()) {
             return "%s Role binding with name %s already exists".formatted(Constant.EMOJI_WARNING, name);
@@ -173,21 +178,21 @@ public class ReactionRoleService implements AuditLogSender {
         return new MessageCreateBuilder().setContent("Role created").setEmbeds(roleSet.toEmbed().build()).build();
     }
 
-    @Command(permission = "268435456")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Edit an existing reaction role")
     public MessageCreateData editrole(
-            Guild guild, @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillSetNames.class) String set,
-            @Command.Arg(autoFillProvider = ReactionRoleSet.AutoFillRoleNames.class) String role
+            Guild guild, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set,
+            @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillRoleNames.class)) String role
     ) {
         final var guildId = guild.getIdLong();
         return setRepo.findById(new ReactionRoleSet.Key(guildId, set)).map(roleSet -> {
-            var roleBind = roleSet.findBinding(role).orElseThrow(() -> new CommandError("No such role: " + role));
+            var roleBind = roleSet.findBinding(role).orElseThrow(() -> Response.of("No such role: " + role));
             var embed    = new EmbedBuilder().setColor(new Color(role.hashCode())).addField(roleBind.toField());
 
             return new MessageCreateBuilder().addEmbeds(embed.build())
                     .addComponents(ActionRow.of(Button.primary(COMPONENT_ID_ROLE_EDIT + set + ':' + role, "Edit...")))
                     .build();
-        }).orElseThrow(() -> new CommandError("Could not find reaction role set with name `%s`".formatted(set)));
+        }).orElseThrow(() -> Response.of("Could not find reaction role set with name `%s`".formatted(set)));
     }
 
     @EventListener
@@ -431,7 +436,7 @@ public class ReactionRoleService implements AuditLogSender {
                 .upsertCommand(Commands.message("Refresh").setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)))
                 .queue();
 
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

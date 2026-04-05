@@ -22,9 +22,13 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -37,7 +41,7 @@ import java.util.ArrayList;
 
 @Log
 @Service
-@Command("lobby-game")
+@Interaction("lobby-game")
 public class GameManager {
     public static final String INTERACTION_CONFIRM = "games_confirm_";
     public static final String INTERACTION_MODIFY  = "games_modify_";
@@ -54,7 +58,7 @@ public class GameManager {
         var modalId = event.getModalId();
         if (!modalId.startsWith(INTERACTION_MODIFY)) return;
         var game    = modalId.substring(INTERACTION_MODIFY.length() + 1);
-        var builder = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game))).toBuilder();
+        var builder = games.findById(game).orElseThrow(() -> Response.of("Game with name `%s` not found".formatted(game))).toBuilder();
 
         String buf;
         var    mapping = event.getValue(OPTION_NAME);
@@ -82,7 +86,7 @@ public class GameManager {
         event.replyEmbeds(EmbedTemplate.success("Game `%s` was deleted".formatted(game)).build()).queue();
     }
 
-    @Command
+    @Interaction
     @Description("Create a new game entry")
     public void create(SlashCommandInteractionEvent event, User user) {
         permissions.verify(user, HerobrinePermission.Gameadmin);
@@ -90,31 +94,37 @@ public class GameManager {
         event.replyModal(createEditorModal(null).build()).queue();
     }
 
-    @Command
+    @Interaction
     @Description("Edit a game entry")
-    public void edit(SlashCommandInteractionEvent event, User user, @Command.Arg(autoFillProvider = Game.All.class) @Description("Game to edit") String game) {
+    public void edit(
+            SlashCommandInteractionEvent event, User user,
+            @Parameter(completion = @Completion(provider = Game.All.class)) @Description("Game to edit") String game
+    ) {
         permissions.verify(user, HerobrinePermission.Gameadmin);
 
-        var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
+        var result = games.findById(game).orElseThrow(() -> Response.of("Game with name `%s` not found".formatted(game)));
 
         event.replyModal(createEditorModal(result).build()).queue();
     }
 
-    @Command
+    @Interaction
     @Description("Create a new game entry")
-    public MessageCreateBuilder remove(User user, @Command.Arg(autoFillProvider = Game.All.class) @Description("Game to remove") String game) {
+    public MessageCreateBuilder remove(User user, @Parameter(completion = @Completion(provider = Game.All.class)) @Description("Game to remove") String game) {
         permissions.verify(user, HerobrinePermission.Gameadmin);
 
-        var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
+        var result = games.findById(game).orElseThrow(() -> Response.of("Game with name `%s` not found".formatted(game)));
 
         return new MessageCreateBuilder().addEmbeds(EmbedTemplate.warning("Are you sure you want to delete this game?").addField(result.toField()).build())
                 .addComponents(ActionRow.of(Button.danger(INTERACTION_CONFIRM + game, "Yes, delete!")));
     }
 
-    @Command(permission = "8589934592")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
     @Description("Edit game Blacklist for this discord server")
-    public void blacklist(User user, Guild guild, @Command.Arg(autoFillProvider = Game.All.class) @Description("Game to blacklist") String game) {
-        var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
+    public void blacklist(
+            User user, Guild guild,
+            @Parameter(completion = @Completion(provider = Game.All.class)) @Description("Game to blacklist") String game
+    ) {
+        var result = games.findById(game).orElseThrow(() -> Response.of("Game with name `%s` not found".formatted(game)));
         var list = lists.findById(new GameFlaglist.Key(guild.getIdLong(), GameFlaglist.Type.Blacklist))
                 .orElseGet(() -> new GameFlaglist(guild.getIdLong(), GameFlaglist.Type.Blacklist, new ArrayList<>()));
         var col = list.getGames();
@@ -125,10 +135,13 @@ public class GameManager {
         lists.save(list);
     }
 
-    @Command(permission = "8589934592")
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
     @Description("Edit game Whitelist for this discord server")
-    public void whitelist(User user, Guild guild, @Command.Arg(autoFillProvider = Game.All.class) @Description("Game to whitelist") String game) {
-        var result = games.findById(game).orElseThrow(() -> new CommandError("Game with name `%s` not found".formatted(game)));
+    public void whitelist(
+            User user, Guild guild,
+            @Parameter(completion = @Completion(provider = Game.All.class)) @Description("Game to whitelist") String game
+    ) {
+        var result = games.findById(game).orElseThrow(() -> Response.of("Game with name `%s` not found".formatted(game)));
         var list = lists.findById(new GameFlaglist.Key(guild.getIdLong(), GameFlaglist.Type.Whitelist))
                 .orElseGet(() -> new GameFlaglist(guild.getIdLong(), GameFlaglist.Type.Whitelist, new ArrayList<>()));
         var col = list.getGames();
@@ -142,7 +155,7 @@ public class GameManager {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

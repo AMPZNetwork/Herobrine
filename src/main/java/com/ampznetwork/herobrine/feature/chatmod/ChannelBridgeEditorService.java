@@ -32,9 +32,13 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.annotations.Description;
 import org.comroid.api.tree.UncheckedCloseable;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.model.CommandError;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.Completion;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.model.Response;
 import org.comroid.util.JdaUtil;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -53,7 +57,7 @@ import java.util.concurrent.TimeUnit;
 
 @Log
 @Service
-@Command("chatbridge")
+@Interaction("chatbridge")
 @ConditionalOnBean(ChannelBridgeService.class)
 public class ChannelBridgeEditorService {
     public static final String INTERACTION_EDIT_CHANNEL      = "cbe_edit_channel";
@@ -72,20 +76,20 @@ public class ChannelBridgeEditorService {
     @Autowired          ChannelBridgeConfigRepo    channelBridges;
 
     /** todo: autofill channel name by seen channel names */
-    @Command(permission = "16")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Create a new channel bridge mapping")
     public void create(Guild guild, MessageChannel channel, UserSnowflake user) {
         openEditor(guild, channel, user, ChannelBridgeConfig.builder().guildId(guild.getIdLong())).queue();
     }
 
-    @Command(permission = "16")
+    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Create a new channel bridge mapping")
     public void edit(
             Guild guild, MessageChannel messageChannel, UserSnowflake user,
-            @Command.Arg(autoFillProvider = GuildChannelNameAutoFillProvider.class) @Description("The chat channel mapping to edit") String name
+            @Parameter(completion = @Completion(provider = GuildChannelNameAutoFillProvider.class)) @Description("The chat channel mapping to edit") String name
     ) {
         var bridge = channelBridges.findByGuildIdAndChannelName(guild.getIdLong(), name)
-                .orElseThrow(() -> new CommandError("Could not find channel bridge by guild id %d and channel name %s"));
+                .orElseThrow(() -> Response.of("Could not find channel bridge by guild id %d and channel name %s"));
 
         openEditor(guild, messageChannel, user, bridge.toBuilder()).queue();
     }
@@ -179,7 +183,7 @@ public class ChannelBridgeEditorService {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

@@ -55,10 +55,12 @@ import org.comroid.api.data.seri.StringSerializable;
 import org.comroid.api.discord.MessageDeliveryTarget;
 import org.comroid.api.func.util.Streams;
 import org.comroid.api.text.Markdown;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
-import org.comroid.commands.impl.discord.JdaCommandAdapter;
-import org.comroid.commands.model.CommandPrivacyLevel;
+import org.comroid.commands.impl.discord.JdaCommandAdapter.ResponseCallback;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.adapter.jda.JdaAdapter;
+import org.comroid.interaction.annotation.ContextDefinition;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -88,7 +90,7 @@ import java.util.stream.Collectors;
 
 @Log
 @Component
-@Command("template")
+@Interaction("template")
 public class MessageTemplateEngine implements AuditLogSender {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
@@ -114,10 +116,10 @@ public class MessageTemplateEngine implements AuditLogSender {
         return new TemplateContext(body, constants);
     }
 
-    @Command(permission = "8192", privacy = CommandPrivacyLevel.PUBLIC)
+    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Evaluate message template scripts")
-    public JdaCommandAdapter.ResponseCallback evaluate(GenericInteractionCreateEvent event, @Command.Arg String template) {
-        return new JdaCommandAdapter.ResponseCallback("```dmt\n%s\n```".formatted(template), msg -> {
+    public ResponseCallback evaluate(GenericInteractionCreateEvent event, @Parameter String template) {
+        return new ResponseCallback("```dmt\n%s\n```".formatted(template), msg -> {
             var context = parse(template, event);
             return msg.reply(context.evaluate().addComponents(createFinalizerActionRow()).build());
         });
@@ -282,7 +284,7 @@ public class MessageTemplateEngine implements AuditLogSender {
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(JDA.class).upsertCommand(Commands.message(INTERACTION_GENERATE_TEMPLATE)).queue();
 
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }

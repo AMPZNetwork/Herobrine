@@ -18,8 +18,9 @@ import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.func.util.DelegateStream;
 import org.comroid.api.net.Token;
-import org.comroid.commands.Command;
-import org.comroid.commands.impl.CommandManager;
+import org.comroid.interaction.InteractionCore;
+import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.annotation.Parameter;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -56,7 +57,7 @@ import java.util.stream.Stream;
 @Log
 @Component
 @Controller
-@Command("haste")
+@Interaction("haste")
 @RequestMapping("/haste")
 @Description("Haste file uploader")
 public class HasteService implements HasteInteractionSource {
@@ -65,9 +66,7 @@ public class HasteService implements HasteInteractionSource {
     public static final Emoji  EMOJI = Emoji.fromUnicode("\uD83D\uDD17"); // 🔗
 
     static {
-        URL_PREFIX = (Debug.isDebug()
-                      ? "http://home.kaleidox.de:8080/"
-                      : "https://herobrine.ampznetwork.com/") + "haste/";
+        URL_PREFIX = (Debug.isDebug() ? "http://home.kaleidox.de:8080/" : "https://herobrine.ampznetwork.com/") + "haste/";
         BASE_DIR   = Paths.get(System.getProperty("java.io.tmpdir"), "herobrine-haste").toFile();
         if (!BASE_DIR.exists() && !BASE_DIR.mkdirs()) throw new AssertionError();
     }
@@ -82,9 +81,9 @@ public class HasteService implements HasteInteractionSource {
     @Autowired                                   ApplicationContext   context;
     @Lazy @Autowired(required = false) @Nullable MinecraftLogAnalyzer analyzer;
 
-    @Command
+    @Interaction
     @Description("Upload a file")
-    public String post(@Command.Arg @Description("The file to upload") File file) throws IOException {
+    public String post(@Parameter @Description("The file to upload") File file) throws IOException {
         try (var fis = new FileInputStream(file)) {
             return URL_PREFIX + post(fis, file.getName());
         }
@@ -145,11 +144,10 @@ public class HasteService implements HasteInteractionSource {
         return id;
     }
 
-    @Command
+    @Interaction
     @GetMapping("/{id}")
     @Description("Get the contents of a file")
-    public ResponseEntity<String> get(@Command.Arg @Description("The haste ID of the file") @PathVariable String id)
-    throws IOException {
+    public ResponseEntity<String> get(@Parameter @Description("The haste ID of the file") @PathVariable String id) throws IOException {
         var file = new File(BASE_DIR, id);
         log.info("Accessing haste content " + file.getAbsolutePath());
         String data;
@@ -158,15 +156,14 @@ public class HasteService implements HasteInteractionSource {
             data = sw.toString();
         }
         return new ResponseEntity<>(data,
-                MultiValueMap.fromSingleValue(Map.of("Content-Type",
-                        MimeType.forExtension(fext(id)).orElse(MimeType.PLAIN).toString())),
+                MultiValueMap.fromSingleValue(Map.of("Content-Type", MimeType.forExtension(fext(id)).orElse(MimeType.PLAIN).toString())),
                 200);
     }
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(CommandManager.class).register(this);
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");
     }
@@ -175,13 +172,12 @@ public class HasteService implements HasteInteractionSource {
         var actions = context.getBeansOfType(HasteInteractionSource.class)
                 .values()
                 .stream()
-                .sorted(Comparator.comparing(ThrowingFunction.rethrowing(src -> src.getClass()
-                        .getMethod("createHasteInteraction", String.class)), org.comroid.annotations.Order.COMPARATOR))
+                .sorted(Comparator.comparing(ThrowingFunction.rethrowing(src -> src.getClass().getMethod("createHasteInteraction", String.class)),
+                        org.comroid.annotations.Order.COMPARATOR))
                 .flatMap(src -> src.createHasteInteraction(id))
                 .toList();
-        message.reply(new MessageCreateBuilder().setContent("File uploaded: `%s`".formatted(fname(filepath)))
-                .addComponents(ActionRow.of(actions))
-                .build()).queue();
+        message.reply(new MessageCreateBuilder().setContent("File uploaded: `%s`".formatted(fname(filepath))).addComponents(ActionRow.of(actions)).build())
+                .queue();
     }
 
     @Override
