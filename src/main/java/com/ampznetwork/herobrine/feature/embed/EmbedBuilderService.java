@@ -30,6 +30,7 @@ import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.component.NameCapitalizer;
 import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -77,6 +78,7 @@ public class EmbedBuilderService implements AuditLogSender {
     }
 
     @Interaction(definitions = {
+            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
             @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_MESSAGES"),
             @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
     }, detached = true)
