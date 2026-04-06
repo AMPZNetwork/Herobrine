@@ -11,12 +11,12 @@ import net.dv8tion.jda.api.components.selections.SelectOption;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
@@ -30,6 +30,7 @@ import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
+import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
@@ -75,22 +76,19 @@ public class EmbedBuilderService implements AuditLogSender {
         return messageCreateData;
     }
 
-    @EventListener
-    public void on(MessageContextInteractionEvent event) {
-        if (!INTERACTION_EDIT.equals(event.getInteraction().getName())) return;
+    @Interaction(definitions = {
+            @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_MESSAGES"),
+            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+    }, detached = true)
+    @Description("Edit any embed contained in this message; message must be sent by the bot")
+    public MessageCreateBuilder editMessageEmbed(Message message, User user, MessageChannelUnion channel) {
+        if (!(message.getAuthor() instanceof SelfUser) || message.getEmbeds().isEmpty()) throw Response.of("This cannot be edited");
 
-        var message = event.getTarget();
-        if (!(message.getAuthor() instanceof SelfUser) || message.getEmbeds().isEmpty()) {
-            event.reply("This embed cannot be edited").setEphemeral(true).queue();
-            return;
-        }
-
-        var user   = event.getUser();
         var embed  = message.getEmbeds().getFirst();
-        var editor = new EmbedEditorSession(user, event.getChannel(), embed, message);
+        var editor = new EmbedEditorSession(user, channel, embed, message);
 
         activeEdits.put(user.getIdLong(), editor);
-        event.reply(createEmbedEditMenu(embed).build()).setEphemeral(true).queue();
+        return createEmbedEditMenu(embed);
     }
 
     @EventListener
