@@ -41,7 +41,7 @@ import java.util.ArrayList;
 
 @Log
 @Service
-@Interaction("lobby-game")
+@Interaction("game")
 public class GameManager {
     public static final String INTERACTION_CONFIRM = "games_confirm_";
     public static final String INTERACTION_MODIFY  = "games_modify_";
