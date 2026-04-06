@@ -18,13 +18,13 @@ import net.dv8tion.jda.api.components.textinput.TextInput;
 import net.dv8tion.jda.api.components.textinput.TextInputStyle;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.SelfUser;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.emoji.Emoji;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
-import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -42,6 +42,7 @@ import org.comroid.interaction.annotation.Completion;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.component.NameCapitalizer;
 import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
@@ -195,22 +196,19 @@ public class ReactionRoleService implements AuditLogSender {
         }).orElseThrow(() -> Response.of("Could not find reaction role set with name `%s`".formatted(set)));
     }
 
-    @EventListener
-    public void on(MessageContextInteractionEvent event) {
-        if (!event.getInteraction().getName().equals("Refresh")) return;
+    @Interaction(definitions = {
+            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
+            @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_ROLES"),
+            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+    }, detached = true)
+    public String refreshReactionRoleMessage(Message message, Guild guild, Member member) {
+        if (!(message.getAuthor() instanceof SelfUser)) throw Response.of("This message cannot be refreshed");
 
-        var message = event.getTarget();
-        if (!(message.getAuthor() instanceof SelfUser)) return;
-
-        var set = setRepo.findByMessageId(message.getIdLong()).orElseThrow();
+        var set = setRepo.findByMessageId(message.getIdLong()).orElseThrow(() -> Response.of("This message cannot be refreshed"));
         message.editMessageEmbeds(set.toEmbed().build()).queue();
 
-        audit().newEntry()
-                .guild(event.getGuild())
-                .source(this)
-                .message("%s is refreshing reaction-role message for set %s".formatted(event.getMember(), set))
-                .queue();
-        event.reply("Successfully refreshed the message").setEphemeral(true).queue();
+        audit().newEntry().guild(guild).source(this).message("%s is refreshing reaction-role message for set %s".formatted(member, set)).queue();
+        return "Successfully refreshed the message";
     }
 
     @EventListener

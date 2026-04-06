@@ -33,7 +33,6 @@ import net.dv8tion.jda.api.entities.MessageReference;
 import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
-import net.dv8tion.jda.api.events.interaction.command.MessageContextInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.EntitySelectInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -61,10 +60,10 @@ import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
+import org.comroid.interaction.component.NameCapitalizer;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jspecify.annotations.NonNull;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
@@ -125,12 +124,13 @@ public class MessageTemplateEngine implements AuditLogSender {
         });
     }
 
-    @EventListener
-    public void on(@NonNull MessageContextInteractionEvent event) {
-        if (!INTERACTION_GENERATE_TEMPLATE.equals(event.getInteraction().getName())) return;
-
+    @Interaction(definitions = {
+            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
+            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+    }, detached = true)
+    @Description("Generate a message template based on this message")
+    public MessageCreateBuilder generateMessageTemplate(Message message) {
         var responseRef = Reference.parse("response").build();
-        var message     = event.getTarget();
         var helper = new Object() {
             final List<Declaration> declarations = new ArrayList<>();
 
@@ -195,9 +195,8 @@ public class MessageTemplateEngine implements AuditLogSender {
         }
 
         var file = FileUpload.fromData(helper.getBytes(), "message.dmt");
-        event.reply(new MessageCreateBuilder().useComponentsV2()
-                .addComponents(Container.of(TextDisplay.of(Markdown.CodeBlock.apply(helper.toString()))), FileDisplay.fromFile(file))
-                .build()).queue();
+        return new MessageCreateBuilder().useComponentsV2()
+                .addComponents(Container.of(TextDisplay.of(Markdown.CodeBlock.apply(helper.toString()))), FileDisplay.fromFile(file));
     }
 
     @EventListener
