@@ -76,13 +76,13 @@ public class ChannelBridgeEditorService {
     @Autowired          ChannelBridgeConfigRepo    channelBridges;
 
     /** todo: autofill channel name by seen channel names */
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Create a new channel bridge mapping")
     public void create(Guild guild, MessageChannel channel, UserSnowflake user) {
         openEditor(guild, channel, user, ChannelBridgeConfig.builder().guildId(guild.getIdLong())).queue();
     }
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Create a new channel bridge mapping")
     public void edit(
             Guild guild, MessageChannel messageChannel, UserSnowflake user,

@@ -46,7 +46,7 @@ public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLo
     @Autowired MinecraftUsernameEnforcerConfigRepository enforcerConfigRepo;
     @Autowired LinkedAccountRepository                   linkedAccounts;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
     @Description("Change Minecraft username enforcer configuration")
     public String configure(
             Guild guild,
@@ -69,7 +69,7 @@ public class MinecraftUsernameEnforcerService implements AuditLogSender, ErrorLo
         update(null);
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "134217728"))
     @Description("Update all nicknames in this guild")
     public void update(@Nullable Guild guild) {
         for (var config : guild == null ? enforcerConfigRepo.findAll() : enforcerConfigRepo.findById(guild.getIdLong()).stream().toList()) {

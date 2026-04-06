@@ -79,7 +79,7 @@ public class ReactionRoleService implements AuditLogSender {
     @Autowired ReactionSetRepo setRepo;
     @Autowired JDA             jda;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Resend reaction role messages")
     @SuppressWarnings("UnusedReturnValue")
     public String resend(
@@ -114,7 +114,7 @@ public class ReactionRoleService implements AuditLogSender {
         return "Reaction messages were resent";
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Create a set of role reactions")
     public String createset(
             Guild guild, Member member, @Parameter String name, @Parameter String description, @Parameter TextChannel channel,
@@ -130,7 +130,7 @@ public class ReactionRoleService implements AuditLogSender {
         return "Reaction role set `%s` was created".formatted(name);
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Remove a set of role reactions")
     public String removeset(Guild guild, Member member, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String name) {
         var guildId = guild.getIdLong();
@@ -142,7 +142,7 @@ public class ReactionRoleService implements AuditLogSender {
         return "Role reaction set removed";
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Edit an existing set of role reactions")
     public MessageCreateData editset(Guild guild, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set) {
         final var guildId = guild.getIdLong();
@@ -158,7 +158,7 @@ public class ReactionRoleService implements AuditLogSender {
         }).orElseThrow(() -> Response.of("Could not find reaction role set with name `%s`".formatted(set)));
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Create a new reaction role")
     public Object createrole(
             Guild guild, Member member, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set,
@@ -179,7 +179,7 @@ public class ReactionRoleService implements AuditLogSender {
         return new MessageCreateBuilder().setContent("Role created").setEmbeds(roleSet.toEmbed().build()).build();
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Edit an existing reaction role")
     public MessageCreateData editrole(
             Guild guild, @Parameter(completion = @Completion(provider = ReactionRoleSet.AutoFillSetNames.class)) String set,
@@ -197,9 +197,9 @@ public class ReactionRoleService implements AuditLogSender {
     }
 
     @Interaction(definitions = {
-            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
-            @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_ROLES"),
-            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+            @ContextDefinition(key = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
+            @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_ROLES"),
+            @ContextDefinition(key = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
     }, detached = true)
     public String refreshReactionRoleMessage(Message message, Guild guild, Member member) {
         if (!(message.getAuthor() instanceof SelfUser)) throw Response.of("This message cannot be refreshed");

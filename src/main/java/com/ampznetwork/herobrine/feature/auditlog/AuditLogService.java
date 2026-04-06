@@ -37,13 +37,13 @@ public class AuditLogService {
     @Autowired AuditLogPreferenceRepo prefRepo;
     @Autowired JDA                    jda;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Show current audit log configuration")
     public MessageEmbed info(Guild guild) {
         return prefRepo.findById(guild.getIdLong()).map(prefs -> prefs.toEmbed().build()).orElseThrow(() -> Response.of("No audit log configuration found"));
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Change audit log configuration")
     public EmbedBuilder config(
             Guild guild, @Parameter @Description("The channel to send the audit log to") TextChannel channel, @Parameter(required = false,

@@ -53,7 +53,7 @@ public class LinkRoleAssignmentService implements AuditLogSender {
     @Autowired LinkRoleConfigRepository linkRoleConfigs;
     @Autowired LinkedAccountRepository  linkedAccounts;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Refresh linked roles")
     public Object refresh(Guild guild) {
         var config = linkRoleConfigs.findById(guild.getIdLong()).orElse(null);
@@ -160,7 +160,7 @@ public class LinkRoleAssignmentService implements AuditLogSender {
         });
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Configure the role to be set for users with a linked Minecraft account")
     public String configure_minecraft(
             Guild guild, @Parameter(required = false) @Description({

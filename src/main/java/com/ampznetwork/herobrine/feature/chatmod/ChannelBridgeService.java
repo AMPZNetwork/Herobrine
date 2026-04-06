@@ -70,7 +70,7 @@ public class ChannelBridgeService {
         return systemChannels.getOrDefault(guildId, null);
     }
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16") })
     @Description("Reloads channel bridge configurations and listeners")
     public String reload(@Nullable Guild guild) {
         for (var bridge : loaded.toArray(LoadedBridge[]::new)) {

@@ -54,13 +54,13 @@ public class TicketTopicManager {
     @Autowired TicketRepository      tickets;
     @Autowired TicketTopicRepository topics;
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Create a new ticket topic")
     public void create(SlashCommandInteractionEvent event, Guild guild) {
         event.replyModal(createEditorModal(INTERACTION_CREATE, null, TicketTopic.builder()).build()).queue();
     }
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Edit an existing ticket topic")
     public void edit(SlashCommandInteractionEvent event, Guild guild, @Parameter(completion = @Completion(provider = TicketTopic.AutoFill.class)) String name) {
         var topic = topics.findById(new TicketTopic.Key(guild.getIdLong(), name))
@@ -69,7 +69,7 @@ public class TicketTopicManager {
         event.replyModal(createEditorModal(INTERACTION_EDIT + '$' + name, topic, TicketTopic.builder()).build()).queue();
     }
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "17179869184") })
     @Description("Delete an existing ticket topic")
     public MessageCreateData delete(
             SlashCommandInteractionEvent event, Guild guild,

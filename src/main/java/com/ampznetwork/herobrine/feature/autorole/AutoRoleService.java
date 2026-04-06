@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 public class AutoRoleService implements AuditLogSender {
     @Autowired AutoRoleRepository repo;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("List all currently configured automated roles")
     public EmbedBuilder list(Guild guild) {
         var embed = new EmbedBuilder().setTitle("All configured automated roles");
@@ -43,7 +43,7 @@ public class AutoRoleService implements AuditLogSender {
         return embed;
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Create a new mapping for an automated role")
     public String create(
             Guild guild, Member member, @Parameter @Description("The role to use for the automation") Role role,
@@ -67,7 +67,7 @@ public class AutoRoleService implements AuditLogSender {
         return "Role automation `%s` was created".formatted(autoRoleMapping);
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Remove a mapping for an automated role")
     public String remove(Guild guild, Member member, @Parameter @Description("The role to remove from automations") Role role) {
         var key = new AutoRoleMapping.Key(guild.getIdLong(), role.getIdLong());

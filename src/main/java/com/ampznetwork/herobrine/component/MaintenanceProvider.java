@@ -47,7 +47,7 @@ public class MaintenanceProvider {
         return enabled;
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Toggle maintenance mode")
     public String toggle(User user, @Parameter(required = false) @Nullable Boolean state) {
         verifySuperadmin(user);
@@ -59,7 +59,7 @@ public class MaintenanceProvider {
         return "Maintenance mode turned " + (enabled ? "*on*" : "*off*");
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Shutdown the Bot")
     public String shutdown(
             User user,

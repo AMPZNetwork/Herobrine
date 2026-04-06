@@ -66,7 +66,7 @@ public class EmbedBuilderService implements AuditLogSender {
 
     private final Map<@NotNull Long, @NotNull EmbedEditorSession> activeEdits = new ConcurrentHashMap<>();
 
-    @Interaction(value = "create", definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
+    @Interaction(value = "create", definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Create a new embed message")
     public MessageCreateData create(User user, MessageChannelUnion channel) {
         var messageCreateData = createEmbedEditMenu(null).build();
@@ -78,9 +78,9 @@ public class EmbedBuilderService implements AuditLogSender {
     }
 
     @Interaction(definitions = {
-            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
-            @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_MESSAGES"),
-            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+            @ContextDefinition(key = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
+            @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_MESSAGES"),
+            @ContextDefinition(key = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
     }, detached = true)
     @Description("Edit any embed contained in this message; message must be sent by the bot")
     public MessageCreateBuilder editMessageEmbed(Message message, User user, MessageChannelUnion channel) {

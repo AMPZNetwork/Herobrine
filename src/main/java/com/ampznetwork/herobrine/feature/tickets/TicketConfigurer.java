@@ -30,7 +30,7 @@ import org.springframework.stereotype.Service;
 public class TicketConfigurer implements AuditLogSender, ErrorLogSender {
     @Autowired TicketConfigurationRepository configs;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Configure the ticketing system")
     public EmbedBuilder configure(
             Guild guild, @Parameter(required = false) @Description("The base channel where ticket threads should be created") @Nullable TextChannel channel,

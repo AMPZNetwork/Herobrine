@@ -65,7 +65,7 @@ public class InteractiveTemplateService {
 
     @Autowired MessageTemplateEngine templateEngine;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Start interactive template mode")
     public ResponseCallback interactive(JDA jda, MessageChannel channel, User user) {
         var result = findInteractiveMode(channel, user);

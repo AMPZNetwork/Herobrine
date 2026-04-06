@@ -41,13 +41,13 @@ public class ErrorLogService implements ErrorHandler {
     @Autowired ErrorLogPreferenceRepo prefRepo;
     @Autowired JDA                    jda;
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
     @Description("Show current error log configuration")
     public MessageEmbed info(Guild guild) {
         return prefRepo.findById(guild.getIdLong()).map(prefs -> prefs.toEmbed().build()).orElseThrow(() -> Response.of("No error log configuration found"));
     }
 
-    @Interaction(definitions = { @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
+    @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "ADMINISTRATOR") })
     @Description("Change error log channel configuration")
     public EmbedBuilder channel(Guild guild, @Parameter @Description("The channel to send the error log to") TextChannel channel) {
         var guildId     = guild.getIdLong();

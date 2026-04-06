@@ -115,7 +115,7 @@ public class MessageTemplateEngine implements AuditLogSender {
         return new TemplateContext(body, constants);
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Evaluate message template scripts")
     public ResponseCallback evaluate(GenericInteractionCreateEvent event, @Parameter String template) {
         return new ResponseCallback("```dmt\n%s\n```".formatted(template), msg -> {
@@ -125,8 +125,8 @@ public class MessageTemplateEngine implements AuditLogSender {
     }
 
     @Interaction(definitions = {
-            @ContextDefinition(value = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
-            @ContextDefinition(value = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
+            @ContextDefinition(key = NameCapitalizer.CONTEXT_KEY, expr = "Title_Case"),
+            @ContextDefinition(key = JdaAdapter.KEY_CONTEXT, expr = JdaAdapter.CONTEXT_MESSAGE)
     }, detached = true)
     @Description("Generate a message template based on this message")
     public MessageCreateBuilder generateMessageTemplate(Message message) {

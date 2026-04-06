@@ -35,7 +35,7 @@ public class ChannelPlayerListService {
     @Autowired JDA                  jda;
     @Autowired ChannelBridgeService bridgeService;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8192"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8192"))
     @Description("Clear player lists for this channel")
     public String clear(Guild guild, TextChannel channel) {
         var bridge = bridgeService.getLoaded().stream().filter(it -> {

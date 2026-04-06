@@ -63,7 +63,7 @@ public class RankSyncService implements AuditLogSender {
         return LuckPermsApiWrapper.builder().baseUrl(cfg.getUri()).credentials(Authentication.ofToken(cfg.getToken())).build();
     }
 
-    @Interaction(value = "rankupdate", definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(value = "rankupdate", definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Perform a refresh on LuckPerms ranks")
     //@Scheduled(initialDelay = 1, fixedRate = 15, timeUnit = TimeUnit.MINUTES)
     @SuppressWarnings({ "SuspiciousToArrayCall", "RedundantSuppression" /* false-positive */ })
@@ -150,7 +150,7 @@ public class RankSyncService implements AuditLogSender {
         });
     }
 
-    @Interaction(value = "rankinfo", definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(value = "rankinfo", definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Show synced ranks and their metadata")
     public CompletableFuture<EmbedBuilder> rankInfo() {
         final var groupApi = lpApi.child(GroupsApi.class).assertion();

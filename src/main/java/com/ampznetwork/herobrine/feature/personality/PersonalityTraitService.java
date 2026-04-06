@@ -56,7 +56,7 @@ public class PersonalityTraitService {
         }
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Create a new personality trait using a flow")
     public void create(IReplyCallback callback, Guild guild, Member member, @Parameter @Description("The name of the new personality trait") String name) {
         if (guild == null) throw Response.of("This only works inside guilds");
@@ -66,7 +66,7 @@ public class PersonalityTraitService {
         openEditor(callback, guild, member, name, null).queue();
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "16"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "16"))
     @Description("Create a new personality trait using a flow")
     public void edit(
             IReplyCallback callback, Guild guild, Member member,

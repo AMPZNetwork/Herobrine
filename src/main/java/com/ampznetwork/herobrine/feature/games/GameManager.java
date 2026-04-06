@@ -118,7 +118,7 @@ public class GameManager {
                 .addComponents(ActionRow.of(Button.danger(INTERACTION_CONFIRM + game, "Yes, delete!")));
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
     @Description("Edit game Blacklist for this discord server")
     public void blacklist(
             User user, Guild guild,
@@ -135,7 +135,7 @@ public class GameManager {
         lists.save(list);
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8589934592"))
     @Description("Edit game Whitelist for this discord server")
     public void whitelist(
             User user, Guild guild,

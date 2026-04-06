@@ -87,7 +87,7 @@ public class PermissionManager {
         mutate(userAssignments, key, state, (k, b) -> new UserPermissionAssignment(k.userId(), k.key(), b));
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "8"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
     @Description("Define member-level permissions")
     public void member(
             @Parameter @Description("Target to define permission for") Member target,
@@ -99,7 +99,7 @@ public class PermissionManager {
         mutate(memberAssignments, key, state, (k, b) -> new MemberPermissionAssignment(k.guildId(), k.userId(), k.key(), b));
     }
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Define role-level permissions")
     public void role(
             @Parameter @Description("Target to define permission for") Role target,

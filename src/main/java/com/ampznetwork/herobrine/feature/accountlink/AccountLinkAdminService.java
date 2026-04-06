@@ -31,7 +31,7 @@ public class AccountLinkAdminService {
     @Autowired MaintenanceProvider     maintenance;
     @Autowired LinkedAccountRepository accounts;
 
-    @Interaction(definitions = @ContextDefinition(value = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
+    @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Show account links for a user")
     public CompletableFuture<MessageEmbed> lookup(@Parameter @Description("The user to look up") User user) {
         var account = accounts.findById(user.getIdLong())
