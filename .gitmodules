@@ -1,3 +1,6 @@
-[submodule "ModSuite"]
-	path = ModSuite
-	url = https://github.com/burdoto/ModSuite
+[submodule "japi"]
+	path = japi
+	url = https://github.com/comroid-git/japi
+[submodule "ChatMod"]
+	path = ChatMod
+	url = https://github.com/AMPZNetwork/ChatMod

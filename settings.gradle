@@ -13,12 +13,4 @@ pluginManagement {
 rootProject.name = 'Herobrine'
 
 include(':japi')
-project(':japi').projectDir = file('ModSuite/japi')
-
-include(':LibMod:api')
-project(':LibMod:api').projectDir = file('ModSuite/LibMod/api')
-
-include(':ChatMod:api')
-project(':ChatMod:api').projectDir = file('ModSuite/ChatMod/api')
-include(':ChatMod:AurionChat:api')
-project(':ChatMod:AurionChat:api').projectDir = file('ModSuite/ChatMod/thirdparty/AurionChat/api')
+include(':ChatMod')

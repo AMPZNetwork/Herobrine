@@ -16,7 +16,7 @@ public class ServerPlayerList implements Clearable {
     public void poll(PlayerListEvent event) {
         var player = event.getPacket().getMessage().getSender();
         if (player == null) return;
-        var playerId = player.getId();
+        var playerId = player.getUuid();
         var flag     = 0;
 
         // inList

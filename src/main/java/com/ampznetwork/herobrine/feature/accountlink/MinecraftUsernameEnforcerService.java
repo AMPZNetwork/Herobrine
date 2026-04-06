@@ -1,12 +1,12 @@
 package com.ampznetwork.herobrine.feature.accountlink;
 
+import com.ampznetwork.chatmod.api.model.Player;
 import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
 import com.ampznetwork.herobrine.feature.accountlink.model.entity.MinecraftUsernameEnforcerConfig;
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import com.ampznetwork.herobrine.repo.MinecraftUsernameEnforcerConfigRepository;
-import com.ampznetwork.libmod.api.entity.Player;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;

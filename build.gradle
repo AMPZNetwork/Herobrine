@@ -12,11 +12,6 @@ group = 'com.ampznetwork'
 description = 'Herobrine'
 version = '0'
 
-[project(':LibMod:api'),
- project(':ChatMod:api')].each {
-    apply from: 'ModSuite/gradle/scripts/setup/global.gradle'
-}
-
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -49,7 +44,7 @@ allprojects*.repositories {
 dependencies {
     // core function
     implementation project(':japi')
-    implementation project(':ChatMod:api')
+    implementation project(':ChatMod')
 
     // antlr
     antlr "org.antlr:antlr4:4.+"

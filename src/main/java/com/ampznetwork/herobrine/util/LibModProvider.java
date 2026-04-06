@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.util;
 
-import com.ampznetwork.libmod.api.model.info.ServerInfoProvider;
+import com.ampznetwork.chatmod.api.model.ServerInfoProvider;
 import lombok.Value;
 import org.springframework.stereotype.Component;
 

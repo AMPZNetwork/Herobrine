@@ -1,15 +1,15 @@
 package com.ampznetwork.herobrine.feature.accountlink;
 
+import com.ampznetwork.chatmod.api.model.Player;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessage;
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
 import com.ampznetwork.chatmod.api.model.protocol.PacketType;
-import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
+import com.ampznetwork.chatmod.model.abstr.ChatModConfig;
 import com.ampznetwork.herobrine.feature.accountlink.model.LinkType;
 import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
 import com.ampznetwork.herobrine.feature.accountlink.model.event.AccountLinkEvent;
 import com.ampznetwork.herobrine.feature.chatmod.ChannelBridgeService;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
-import com.ampznetwork.libmod.api.entity.Player;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.UserSnowflake;

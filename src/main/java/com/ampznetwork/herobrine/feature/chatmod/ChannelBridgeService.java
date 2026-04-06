@@ -1,7 +1,7 @@
 package com.ampznetwork.herobrine.feature.chatmod;
 
 import com.ampznetwork.chatmod.api.model.protocol.ChatMessagePacket;
-import com.ampznetwork.chatmod.lite.model.abstr.ChatModConfig;
+import com.ampznetwork.chatmod.model.abstr.ChatModConfig;
 import com.ampznetwork.herobrine.feature.chatmod.model.GuildChannelNameAutoFillProvider;
 import com.ampznetwork.herobrine.feature.chatmod.model.LoadedBridge;
 import com.ampznetwork.herobrine.feature.chatmod.protocol.JacksonPacketConverter;
@@ -42,8 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @Interaction("chat")
 public class ChannelBridgeService {
-    public static final   String                                                       ENDPOINT_NAME   = "discord";
-    public static final   ChatModConfig                                                CHAT_MOD_CONFIG = new ChatModConfig() {
+    public static final String        ENDPOINT_NAME   = "discord";
+    public static final ChatModConfig CHAT_MOD_CONFIG = new ChatModConfig() {
         @Override
         public String getServerName() {
             return "§9DISCORD";

@@ -1,8 +1,8 @@
 package com.ampznetwork.herobrine.feature.accountlink;
 
+import com.ampznetwork.chatmod.api.model.Player;
 import com.ampznetwork.herobrine.component.MaintenanceProvider;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
-import com.ampznetwork.libmod.api.entity.Player;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;

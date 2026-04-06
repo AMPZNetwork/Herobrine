@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.feature.chatmod.model;
 
-import com.ampznetwork.libmod.api.util.Util;
+import com.ampznetwork.chatmod.util.Util;
 import lombok.Value;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
