@@ -34,7 +34,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Log
@@ -46,55 +45,51 @@ public class AccountLinkerService {
     @Autowired    ChannelBridgeService      minecraftChannelBridgeService;
     @Autowired    ApplicationEventPublisher eventPublisher;
 
-    @Interaction
+    @Interaction(async = true)
     @Description("Verify account linkage after requesting a token")
-    public CompletableFuture<String> verify(Guild guild, UserSnowflake user, @Parameter @Description("The token you received") String token) {
-        return CompletableFuture.supplyAsync(() -> {
-            var result = pending.stream().filter(link -> link.userId() == user.getIdLong() && link.token().equals(token)).findAny();
+    public String verify(Guild guild, UserSnowflake user, @Parameter @Description("The token you received") String token) {
+        var result = pending.stream().filter(link -> link.userId() == user.getIdLong() && link.token().equals(token)).findAny();
 
-            if (result.isEmpty()) return "Sorry, wrong token.";
-            var pending = result.get();
+        if (result.isEmpty()) return "Sorry, wrong token.";
+        var pending = result.get();
 
-            LinkedAccount account;
-            var           accountResult = linkedAccounts.findById(user.getIdLong());
-            if (accountResult.isPresent()) account = accountResult.get();
-            else //noinspection SwitchStatementWithTooFewBranches
-                switch (pending) {
-                    case PendingMinecraftLink mc -> {
-                        var playerId = Player.fetchId(mc.minecraftUsername).join();
-                        account = LinkedAccount.builder().discordId(user.getIdLong()).minecraftId(playerId).build();
-                    }
-                    default -> throw Response.of("Internal error\n-# Please contact the bot developers");
+        LinkedAccount account;
+        var           accountResult = linkedAccounts.findById(user.getIdLong());
+        if (accountResult.isPresent()) account = accountResult.get();
+        else //noinspection SwitchStatementWithTooFewBranches
+            switch (pending) {
+                case PendingMinecraftLink mc -> {
+                    var playerId = Player.fetchId(mc.minecraftUsername).join();
+                    account = LinkedAccount.builder().discordId(user.getIdLong()).minecraftId(playerId).build();
                 }
+                default -> throw Response.of("Internal error\n-# Please contact the bot developers");
+            }
 
-            linkedAccounts.save(account);
-            this.pending.remove(pending);
-            eventPublisher.publishEvent(new AccountLinkEvent(this, guild, account, pending.type()));
-            return "Your accounts have successfully been linked!";
-        });
+        linkedAccounts.save(account);
+        this.pending.remove(pending);
+        eventPublisher.publishEvent(new AccountLinkEvent(this, guild, account, pending.type()));
+        return "Your accounts have successfully been linked!";
     }
 
-    @Interaction
+    @Interaction(async = true)
     @Description("Request a token to link your Minecraft account")
-    public CompletableFuture<String> minecraft(Guild guild, UserSnowflake user, @Parameter @Description("Minecraft Username to be linked") String username) {
-        return CompletableFuture.supplyAsync(() -> {
-            var result = linkedAccounts.findById(user.getIdLong()).or(() -> {
-                var minecraftId = Player.fetchId(username).join();
-                return linkedAccounts.findByMinecraftId(minecraftId);
-            });
-
-            if (result.isPresent()) return "Your account is already linked to Minecraft username " + Player.fetchUsername(result.get().getMinecraftId()).join();
-
-            var token = newToken();
-            var systemChannel = minecraftChannelBridgeService.getSystemChannel(guild.getIdLong());
-
-            if (systemChannel == null) return "No system channel was found for this server";
-            systemChannel.send(createMinecraftTokenPacket(user, username, token));
-
-            var pendingLink = new PendingMinecraftLink(user.getIdLong(), username, token, Instant.now().plus(PendingLink.TIMEOUT));
-            pending.add(pendingLink);
-            return "Please check in-game for your verification token, then use `/link verify <token>` to verify your account linkage";
+    public String minecraft(Guild guild, UserSnowflake user, @Parameter @Description("Minecraft Username to be linked") String username) {
+        var result = linkedAccounts.findById(user.getIdLong()).or(() -> {
+            var minecraftId = Player.fetchId(username).join();
+            return linkedAccounts.findByMinecraftId(minecraftId);
         });
+
+        if (result.isPresent()) return "Your account is already linked to Minecraft username " + Player.fetchUsername(result.get().getMinecraftId()).join();
+
+        var token         = newToken();
+        var systemChannel = minecraftChannelBridgeService.getSystemChannel(guild.getIdLong());
+
+        if (systemChannel == null) return "No system channel was found for this server";
+        systemChannel.send(createMinecraftTokenPacket(user, username, token));
+
+        var pendingLink = new PendingMinecraftLink(user.getIdLong(), username, token, Instant.now().plus(PendingLink.TIMEOUT));
+        pending.add(pendingLink);
+        return "Please check in-game for your verification token, then use `/link verify <token>` to verify your account linkage";
     }
 
     @EventListener
