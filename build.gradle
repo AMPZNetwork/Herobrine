@@ -60,6 +60,10 @@ dependencies {
     // rabbitmq
     implementation 'com.rabbitmq:amqp-client:+'
 
+    // json
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
     // dev
     //developmentOnly 'org.springframework.boot:spring-boot-devtools' <- doesnt work fsr with this loader config
     developmentOnly 'org.springframework.boot:spring-boot-starter-actuator'
