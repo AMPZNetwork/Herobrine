@@ -27,4 +27,8 @@ public interface LinkedAccountRepository extends CrudRepository<LinkedAccount, @
     @ResponseBody
     @GetMapping("/by_minecraft/{id}")
     Optional<LinkedAccount> findByMinecraftId(@PathVariable("id") UUID minecraftId);
+
+    @ResponseBody
+    @GetMapping("/by_hytale/{id}")
+    Optional<LinkedAccount> findByHytaleId(@PathVariable("id") UUID hytaleId);
 }
