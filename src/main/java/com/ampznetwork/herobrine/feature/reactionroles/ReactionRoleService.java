@@ -8,7 +8,6 @@ import com.ampznetwork.herobrine.util.Constant;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -29,8 +28,6 @@ import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionRemoveEvent;
-import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -429,11 +426,6 @@ public class ReactionRoleService implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext()
-                .getBean(JDA.class)
-                .upsertCommand(Commands.message("Refresh").setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.ADMINISTRATOR)))
-                .queue();
-
         event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");

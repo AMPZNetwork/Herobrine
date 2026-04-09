@@ -19,7 +19,6 @@ import com.ampznetwork.herobrine.feature.template.types.Type;
 import com.ampznetwork.herobrine.feature.template.visitor.SourceBodyVisitor;
 import com.ampznetwork.herobrine.util.Constant;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
@@ -39,7 +38,6 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.react.GenericMessageReactionEvent;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
 import net.dv8tion.jda.api.interactions.InteractionHook;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.components.ComponentInteraction;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
@@ -95,7 +93,6 @@ public class MessageTemplateEngine implements AuditLogSender {
 
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
     public static final String INTERACTION_RESEND_HERE       = "mte_resend_here";
-    public static final String INTERACTION_GENERATE_TEMPLATE = "Generate message template";
 
     public static final String ERROR_NO_TEMPLATE   = "No message template script found";
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
@@ -281,8 +278,6 @@ public class MessageTemplateEngine implements AuditLogSender {
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(JDA.class).upsertCommand(Commands.message(INTERACTION_GENERATE_TEMPLATE)).queue();
-
         event.getApplicationContext().getBean(InteractionCore.class).register(this);
 
         log.info("Initialized");

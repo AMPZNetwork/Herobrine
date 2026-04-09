@@ -2,8 +2,6 @@ package com.ampznetwork.herobrine.feature.embed;
 
 import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import lombok.extern.java.Log;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.label.Label;
@@ -19,8 +17,6 @@ import net.dv8tion.jda.api.entities.channel.unions.MessageChannelUnion;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
-import net.dv8tion.jda.api.interactions.commands.DefaultMemberPermissions;
-import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.modals.ModalMapping;
 import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
@@ -53,7 +49,6 @@ import java.util.function.Predicate;
 @Service
 @Interaction("embed")
 public class EmbedBuilderService implements AuditLogSender {
-    public static final String INTERACTION_EDIT         = "Edit Embed";
     public static final String INTERACTION_ADD_FIELD    = "edit-field-add";
     public static final String INTERACTION_EDIT_FIELD   = "edit-field-edit";
     public static final String INTERACTION_REMOVE_FIELD = "edit-field-remove";
@@ -207,11 +202,6 @@ public class EmbedBuilderService implements AuditLogSender {
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public void on(ApplicationStartedEvent event) {
         event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        event.getApplicationContext()
-                .getBean(JDA.class)
-                .upsertCommand(Commands.message(INTERACTION_EDIT).setDefaultPermissions(DefaultMemberPermissions.enabledFor(Permission.MESSAGE_MANAGE)))
-                .queue();
 
         log.info("Initialized");
     }
