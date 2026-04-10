@@ -2,7 +2,6 @@ package com.ampznetwork.herobrine.feature.activity;
 
 import com.ampznetwork.herobrine.component.MaintenanceProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.OnlineStatus;
@@ -33,7 +32,7 @@ public class BotActivityService {
     @Autowired          ObjectMapper        mapper;
 
     @Interaction
-    @Description("Update bot activity")
+    @Description("Update bot presence")
     public void set(
             User user, @Parameter OnlineStatus status, @Parameter Activity.ActivityType activity, @Parameter String name,
             @Parameter @Nullable String url
@@ -43,27 +42,33 @@ public class BotActivityService {
         var info = new ActivityInfo(status, activity, name, url);
 
         try {
+            if (!INFO.exists() && !INFO.createNewFile()) throw new IOException("Could not create config file " + INFO.getAbsolutePath());
+
             mapper.writeValue(INFO, info);
         } finally {
             updatePresence(info);
         }
     }
 
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
+    @Interaction
+    @Description("Reload presence from config")
+    public void reload(User user) throws IOException {
+        if (user != null) maintenance.verifySuperadmin(user);
+        if (!INFO.exists()) return;
 
-        refreshOldStatus();
-
-        log.info("Initialized");
-    }
-
-    @SneakyThrows
-    private void refreshOldStatus() {
         var info = mapper.readValue(INFO, ActivityInfo.class);
 
         updatePresence(info);
+    }
+
+    @EventListener
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    public void on(ApplicationStartedEvent event) throws IOException {
+        event.getApplicationContext().getBean(InteractionCore.class).register(this);
+
+        reload(null);
+
+        log.info("Initialized");
     }
 
     private void updatePresence(ActivityInfo info) {
