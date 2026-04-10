@@ -1,6 +1,6 @@
 [submodule "japi"]
 	path = japi
-	url = https://github.com/comroid-git/japi
+	url = https://git.comroid.org/comroid/japi
 [submodule "ChatMod"]
 	path = ChatMod
 	url = https://github.com/AMPZNetwork/ChatMod
