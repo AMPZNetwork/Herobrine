@@ -34,8 +34,9 @@ public class BotActivityService {
     @Interaction
     @Description("Update bot presence")
     public void set(
-            User user, @Parameter OnlineStatus status, @Parameter Activity.ActivityType activity, @Parameter String name,
-            @Parameter @Nullable String url
+            User user, @Parameter @Description("Status to display") OnlineStatus status,
+            @Parameter @Description("Activity to display") Activity.ActivityType activity, @Parameter @Description("Name of the activity") String name,
+            @Parameter @Description("A URL for information about the activity") @Nullable String url
     ) throws IOException {
         maintenance.verifySuperadmin(user);
 
