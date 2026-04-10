@@ -2,4 +2,7 @@
 
 ./pull.sh
 ./gradlew bootWar
-java -Xmx2G -jar build/libs/Herobrine-0.war
+
+projectDir="$PWD"
+
+(cd '/srv/herobrine' && java -Xmx2G -jar "$projectDir/build/libs/Herobrine-0.war") || (echo 'could not CD and EXEC')
