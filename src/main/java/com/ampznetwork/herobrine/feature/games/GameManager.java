@@ -1,7 +1,7 @@
 package com.ampznetwork.herobrine.feature.games;
 
-import com.ampznetwork.herobrine.component.permission.PermissionManager;
-import com.ampznetwork.herobrine.component.permission.model.HerobrinePermission;
+import com.ampznetwork.herobrine.component.user.permission.PermissionManager;
+import com.ampznetwork.herobrine.component.user.permission.model.HerobrinePermission;
 import com.ampznetwork.herobrine.feature.games.model.Game;
 import com.ampznetwork.herobrine.feature.games.model.GameFlaglist;
 import com.ampznetwork.herobrine.repo.GameFlagListRepository;
