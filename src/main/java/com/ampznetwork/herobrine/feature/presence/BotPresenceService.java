@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.activity;
+package com.ampznetwork.herobrine.feature.presence;
 
 import com.ampznetwork.herobrine.component.MaintenanceProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,9 +24,9 @@ import java.io.IOException;
 
 @Log
 @Service
-@Interaction("activity")
-public class BotActivityService {
-    public static final File                INFO = new File("./activity.json");
+@Interaction("presence")
+public class BotPresenceService {
+    public static final File INFO = new File("./presence.json");
     @Autowired          JDA                 jda;
     @Autowired          MaintenanceProvider maintenance;
     @Autowired          ObjectMapper        mapper;
@@ -40,7 +40,7 @@ public class BotActivityService {
     ) throws IOException {
         maintenance.verifySuperadmin(user);
 
-        var info = new ActivityInfo(status, activity, name, url);
+        var info = new PresenceInfo(status, activity, name, url);
 
         try {
             if (!INFO.exists() && !INFO.createNewFile()) throw new IOException("Could not create config file " + INFO.getAbsolutePath());
@@ -57,7 +57,7 @@ public class BotActivityService {
         if (user != null) maintenance.verifySuperadmin(user);
         if (!INFO.exists()) return;
 
-        var info = mapper.readValue(INFO, ActivityInfo.class);
+        var info = mapper.readValue(INFO, PresenceInfo.class);
 
         updatePresence(info);
     }
@@ -72,11 +72,11 @@ public class BotActivityService {
         log.info("Initialized");
     }
 
-    private void updatePresence(ActivityInfo info) {
+    private void updatePresence(PresenceInfo info) {
         jda.getPresence().setPresence(info.status, Activity.of(info.activity, info.name, info.url));
     }
 
-    record ActivityInfo(
+    record PresenceInfo(
             OnlineStatus status, Activity.ActivityType activity, String name, @Nullable String url
     ) {}
 }
