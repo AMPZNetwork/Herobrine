@@ -1,6 +1,6 @@
-package com.ampznetwork.herobrine.component.permission.model;
+package com.ampznetwork.herobrine.component.user.permission.model;
 
-import com.ampznetwork.herobrine.component.permission.abstr.PermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.abstr.PermissionAssignment;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
@@ -15,8 +15,8 @@ import lombok.NoArgsConstructor;
 @IdClass(UserPermissionAssignment.Key.class)
 public class UserPermissionAssignment implements PermissionAssignment {
     @Id long   userId;
-    @Id String key;
-    boolean set;
+    @Id String permissionKey;
+    boolean state;
 
-    public record Key(long userId, String key) {}
+    public record Key(long userId, String permissionKey) {}
 }

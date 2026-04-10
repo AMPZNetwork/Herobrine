@@ -1,11 +1,11 @@
-package com.ampznetwork.herobrine.component.permission;
+package com.ampznetwork.herobrine.component.user.permission;
 
 import com.ampznetwork.herobrine.component.MaintenanceProvider;
-import com.ampznetwork.herobrine.component.permission.abstr.PermissionAssignment;
-import com.ampznetwork.herobrine.component.permission.model.HerobrinePermission;
-import com.ampznetwork.herobrine.component.permission.model.MemberPermissionAssignment;
-import com.ampznetwork.herobrine.component.permission.model.RolePermissionAssignment;
-import com.ampznetwork.herobrine.component.permission.model.UserPermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.abstr.PermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.model.HerobrinePermission;
+import com.ampznetwork.herobrine.component.user.permission.model.MemberPermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.model.RolePermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.model.UserPermissionAssignment;
 import com.ampznetwork.herobrine.repo.MemberPermissionAssignmentRepository;
 import com.ampznetwork.herobrine.repo.RolePermissionAssignmentRepository;
 import com.ampznetwork.herobrine.repo.UserPermissionAssignmentRepository;
@@ -70,7 +70,7 @@ public class PermissionManager {
             default -> Optional.empty();
         };
 
-        return assignment.map(PermissionAssignment::isSet).map(TriState::byBoolean).orElse(TriState.NOT_SET);
+        return assignment.map(PermissionAssignment::isState).map(TriState::byBoolean).orElse(TriState.NOT_SET);
     }
 
     @Interaction
@@ -84,7 +84,7 @@ public class PermissionManager {
 
         var key = new UserPermissionAssignment.Key(target.getIdLong(), permission.getPrimaryName());
 
-        mutate(userAssignments, key, state, (k, b) -> new UserPermissionAssignment(k.userId(), k.key(), b));
+        mutate(userAssignments, key, state, (k, b) -> new UserPermissionAssignment(k.userId(), k.permissionKey(), b));
     }
 
     @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "8"))
@@ -96,19 +96,18 @@ public class PermissionManager {
     ) {
         var key = new MemberPermissionAssignment.Key(target.getGuild().getIdLong(), target.getIdLong(), permission.getPrimaryName());
 
-        mutate(memberAssignments, key, state, (k, b) -> new MemberPermissionAssignment(k.guildId(), k.userId(), k.key(), b));
+        mutate(memberAssignments, key, state, (k, b) -> new MemberPermissionAssignment(k.guildId(), k.userId(), k.permissionKey(), b));
     }
 
     @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Define role-level permissions")
     public void role(
-            @Parameter @Description("Target to define permission for") Role target,
-            @Parameter @Description("Permission to set") HerobrinePermission permission,
+            @Parameter @Description("Target to define permission for") Role target, @Parameter @Description("Permission to set") HerobrinePermission permission,
             @Parameter(required = false) @Description("Permission state") @Nullable Boolean state
     ) {
         var key = new RolePermissionAssignment.Key(target.getIdLong(), permission.getPrimaryName());
 
-        mutate(roleAssignments, key, state, (k, b) -> new RolePermissionAssignment(k.roleId(), k.key(), b));
+        mutate(roleAssignments, key, state, (k, b) -> new RolePermissionAssignment(k.roleId(), k.permissionKey(), b));
     }
 
     @EventListener

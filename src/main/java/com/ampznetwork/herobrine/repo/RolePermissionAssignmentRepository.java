@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.repo;
 
-import com.ampznetwork.herobrine.component.permission.model.RolePermissionAssignment;
+import com.ampznetwork.herobrine.component.user.permission.model.RolePermissionAssignment;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 

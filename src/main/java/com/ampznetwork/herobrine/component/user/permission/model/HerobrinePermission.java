@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component.permission.model;
+package com.ampznetwork.herobrine.component.user.permission.model;
 
 import lombok.AccessLevel;
 import lombok.Getter;
