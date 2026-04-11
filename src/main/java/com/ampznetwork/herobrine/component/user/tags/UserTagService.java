@@ -5,6 +5,8 @@ import com.ampznetwork.herobrine.repo.UserTagProviderRepository;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.Member;
 import org.comroid.annotations.Description;
+import org.comroid.api.func.util.Streams;
+import org.comroid.api.text.Markdown;
 import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -39,6 +41,7 @@ public class UserTagService {
                 .distinct()
                 .sorted(Comparator.comparingInt(Enum::ordinal))
                 .map(Enum::name)
+                .collect(Streams.orElseGet(() -> Markdown.Code.apply("<none>")))
                 .collect(Collectors.joining("\n- ", "## Tags of %s\n- ".formatted(member), ""));
     }
 
