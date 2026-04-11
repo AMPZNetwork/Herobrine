@@ -18,17 +18,13 @@ import org.comroid.api.func.exc.ThrowingFunction;
 import org.comroid.api.func.util.Debug;
 import org.comroid.api.func.util.DelegateStream;
 import org.comroid.api.net.Token;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -158,14 +154,6 @@ public class HasteService implements HasteInteractionSource {
         return new ResponseEntity<>(data,
                 MultiValueMap.fromSingleValue(Map.of("Content-Type", MimeType.forExtension(fext(id)).orElse(MimeType.PLAIN).toString())),
                 200);
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private void announceDone(Message message, String filepath, String id) {

@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.GenericEvent;
 import net.dv8tion.jda.api.events.guild.member.GenericGuildMemberEvent;
 import org.comroid.annotations.Description;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.Completion;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -20,10 +19,7 @@ import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 @Log
@@ -88,13 +84,5 @@ public class AutoRoleService implements AuditLogSender {
 
             mapping.accept(this, (GenericGuildMemberEvent) event);
         }
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 }

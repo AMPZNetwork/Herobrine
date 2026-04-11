@@ -14,7 +14,6 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.comroid.annotations.Description;
 import org.comroid.api.net.Rabbit;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.Completion;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -143,12 +142,8 @@ public class ChannelBridgeService {
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        reload(null);
-
-        log.info("Initialized");
+    public void on(ApplicationStartedEvent ignored) {
+        log.info("Loaded: " + reload(null));
     }
 
     private void handleSystemPackets(ChatMessagePacket packet) {

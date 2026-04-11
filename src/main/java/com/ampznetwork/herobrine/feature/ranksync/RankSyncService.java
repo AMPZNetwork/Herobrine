@@ -22,17 +22,12 @@ import org.comroid.api.net.luckperms.model.group.GroupSearchResult;
 import org.comroid.api.net.luckperms.model.node.Node;
 import org.comroid.api.net.luckperms.model.node.NodeType;
 import org.comroid.api.net.luckperms.model.user.UserData;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -187,14 +182,6 @@ public class RankSyncService implements AuditLogSender {
 
                     return embed;
                 });
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private CompletionStage<Map<String, GroupData>> parallelFetchGroups(Collection<String> names) {

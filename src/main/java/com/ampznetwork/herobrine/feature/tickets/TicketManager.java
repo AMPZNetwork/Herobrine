@@ -30,16 +30,12 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.modals.Modal;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -145,14 +141,6 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
                         })
                         .flatMap($ -> hook.editOriginal("Ticket opened!")))
                 .queue();
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private Modal.Builder createOpenTicketModal(Guild guild) {

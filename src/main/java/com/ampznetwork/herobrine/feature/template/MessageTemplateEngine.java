@@ -53,7 +53,6 @@ import org.comroid.api.discord.MessageDeliveryTarget;
 import org.comroid.api.func.util.Streams;
 import org.comroid.api.text.Markdown;
 import org.comroid.commands.impl.discord.JdaCommandAdapter.ResponseCallback;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
@@ -62,10 +61,7 @@ import org.comroid.interaction.component.NameCapitalizer;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
@@ -92,7 +88,7 @@ public class MessageTemplateEngine implements AuditLogSender {
     private static final Pattern MD_PATTERN = Pattern.compile("`{3}dmt\\n([^`]*)`{3}");
 
     public static final String INTERACTION_FINALIZE_IN_CHANNEL = "mte_finalize_channel";
-    public static final String INTERACTION_RESEND_HERE       = "mte_resend_here";
+    public static final String INTERACTION_RESEND_HERE = "mte_resend_here";
 
     public static final String ERROR_NO_TEMPLATE   = "No message template script found";
     public static final String ERROR_NO_REFERENCE  = "No message reference found";
@@ -273,14 +269,6 @@ public class MessageTemplateEngine implements AuditLogSender {
         } finally {
             event.getReaction().removeReaction(user).queue();
         }
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private RestAction<?> hookSendFinal(GenericEvent event, MessageChannelUnion channel, Message original, Message referenced, InteractionHook hook) {

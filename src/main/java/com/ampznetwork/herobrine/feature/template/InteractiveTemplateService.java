@@ -27,7 +27,6 @@ import org.comroid.annotations.Description;
 import org.comroid.api.text.Markdown;
 import org.comroid.api.tree.UncheckedCloseable;
 import org.comroid.commands.impl.discord.JdaCommandAdapter.ResponseCallback;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
@@ -36,10 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -135,14 +131,6 @@ public class InteractiveTemplateService {
     @EventListener
     public void on(@NonNull MessageBulkDeleteEvent event) {
         event.getMessageIds().stream().mapToLong(Long::parseLong).forEach(this::handleMessageDelete);
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private void handleMessageDelete(long messageId) {

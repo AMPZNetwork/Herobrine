@@ -34,15 +34,11 @@ import net.dv8tion.jda.api.modals.Modal;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageEditBuilder;
 import org.comroid.api.Polyfill;
-import org.comroid.interaction.InteractionCore;
 import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -82,14 +78,6 @@ public class TraitEditorService implements ErrorLogSender, AuditLogSender {
 
     Optional<TraitEditor> findTraitEditor(Guild guild, UserSnowflake user) {
         return editors.stream().filter(creator -> creator.guild.equals(guild) && creator.user.equals(user)).findAny();
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     @EventListener

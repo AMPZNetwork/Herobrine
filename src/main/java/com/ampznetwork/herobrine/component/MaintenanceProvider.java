@@ -6,17 +6,12 @@ import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
 import org.jetbrains.annotations.Nullable;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -71,15 +66,6 @@ public class MaintenanceProvider {
 
         System.exit(0);
         return "Goodbye";
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        //event.getApplicationContext().getBean(JDA.class).addEventListener(this);
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     public boolean isSuperadmin(User user) {

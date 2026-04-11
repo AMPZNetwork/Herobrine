@@ -12,7 +12,6 @@ import net.dv8tion.jda.api.events.message.GenericMessageEvent;
 import net.dv8tion.jda.api.interactions.callbacks.IReplyCallback;
 import net.dv8tion.jda.api.requests.RestAction;
 import org.comroid.annotations.Description;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.Completion;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -22,10 +21,7 @@ import org.comroid.interaction.model.Response;
 import org.comroid.util.JdaUtil;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 @Log
@@ -79,14 +75,6 @@ public class PersonalityTraitService {
         var trait = result.get();
 
         openEditor(callback, guild, member, name, trait).queue();
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private RestAction<Message> openEditor(IReplyCallback callback, Guild guild, Member member, String name, @Nullable PersonalityTrait trait) {

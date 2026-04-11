@@ -8,7 +8,6 @@ import net.dv8tion.jda.api.OnlineStatus;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.jspecify.annotations.Nullable;
@@ -64,12 +63,9 @@ public class BotPresenceService {
 
     @EventListener
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) throws IOException {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
+    public void on(ApplicationStartedEvent ignored) throws IOException {
         reload(null);
-
-        log.info("Initialized");
+        log.info("Reloaded");
     }
 
     private void updatePresence(PresenceInfo info) {

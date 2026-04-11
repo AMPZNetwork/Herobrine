@@ -18,15 +18,11 @@ import org.comroid.annotations.Description;
 import org.comroid.api.Polyfill;
 import org.comroid.api.func.ext.Builder;
 import org.comroid.api.func.util.Streams;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -139,14 +135,6 @@ public class MinecraftLogAnalyzer implements HasteInteractionSource {
         if (!unparsed.isEmpty()) log.fine("Unparseable log entries:\n\t" + String.join("\n\t", unparsed));
 
         return new AnalysisResults(id, entries);
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     @Override

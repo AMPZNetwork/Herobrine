@@ -20,7 +20,6 @@ import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.kyori.adventure.util.TriState;
 import org.comroid.annotations.Description;
 import org.comroid.api.text.Markdown;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
@@ -29,10 +28,6 @@ import org.comroid.interaction.model.Response;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Component;
 
@@ -108,14 +103,6 @@ public class PermissionManager {
         var key = new RolePermissionAssignment.Key(target.getIdLong(), permission.getPrimaryName());
 
         mutate(roleAssignments, key, state, (k, b) -> new RolePermissionAssignment(k.roleId(), k.permissionKey(), b));
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     private <K, PA extends PermissionAssignment, REPO extends CrudRepository<PA, K>> void mutate(

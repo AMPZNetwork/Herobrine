@@ -8,17 +8,12 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Description;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -34,8 +29,7 @@ public class AccountLinkAdminService {
     @Interaction(definitions = @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "268435456"))
     @Description("Show account links for a user")
     public CompletableFuture<MessageEmbed> lookup(@Parameter @Description("The user to look up") User user) {
-        var account = accounts.findById(user.getIdLong())
-                .orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
+        var account = accounts.findById(user.getIdLong()).orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
 
         return CompletableFuture.supplyAsync(() -> {
             var embed = new EmbedBuilder();
@@ -58,18 +52,9 @@ public class AccountLinkAdminService {
     ) {
         if (!executor.equals(user)) maintenance.verifySuperadmin(executor);
 
-        accounts.findById(user.getIdLong())
-                .orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
+        accounts.findById(user.getIdLong()).orElseThrow(() -> Response.of("User %s has not linked any accounts yet".formatted(user)));
         accounts.deleteById(user.getIdLong());
 
         return "All account linkage for user %s has been deleted";
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 }

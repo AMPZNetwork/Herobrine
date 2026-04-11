@@ -5,13 +5,8 @@ import com.ampznetwork.herobrine.component.config.model.Config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
 import org.comroid.api.java.ResourceLoader;
-import org.comroid.interaction.InteractionCore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -30,13 +25,5 @@ public class ConfigurationService {
     @Bean
     public Config config(@Autowired File configFile, @Autowired ObjectMapper objectMapper) throws IOException {
         return objectMapper.readValue(configFile, Config.class);
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 }

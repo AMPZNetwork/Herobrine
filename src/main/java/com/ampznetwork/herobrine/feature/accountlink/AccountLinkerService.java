@@ -17,16 +17,11 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.comroid.annotations.Description;
 import org.comroid.api.net.Token;
-import org.comroid.interaction.InteractionCore;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -90,14 +85,6 @@ public class AccountLinkerService {
         var pendingLink = new PendingMinecraftLink(user.getIdLong(), username, token, Instant.now().plus(PendingLink.TIMEOUT));
         pending.add(pendingLink);
         return "Please check in-game for your verification token, then use `/link verify <token>` to verify your account linkage";
-    }
-
-    @EventListener
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public void on(ApplicationStartedEvent event) {
-        event.getApplicationContext().getBean(InteractionCore.class).register(this);
-
-        log.info("Initialized");
     }
 
     @Scheduled(fixedRate = 1, timeUnit = TimeUnit.MINUTES)
