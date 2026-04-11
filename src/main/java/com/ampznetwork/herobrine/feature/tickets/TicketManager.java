@@ -108,6 +108,10 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
         var description = Objects.requireNonNull(event.getValue(OPTION_DESCRIPTION), "description option").getAsString();
 
         // open ticket thread
+        openTicket(event, guild, topic, title, description);
+    }
+
+    private void openTicket(@NonNull ModalInteractionEvent event, Guild guild, TicketTopic topic, String title, String description) {
         var config      = configs.findById(guild.getIdLong()).orElseThrow();
         var baseChannel = jda.getTextChannelById(config.getBaseChannelId());
         if (baseChannel == null) {

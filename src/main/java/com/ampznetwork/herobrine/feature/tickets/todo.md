@@ -9,7 +9,7 @@
 - user inactive for >48h (or other duration)
 - ... come up with more
 
-# ping only on tickets by vips
+# ping only on tickets by vips <DONE>
 
 # ticket transcript to file
 
