@@ -6,6 +6,7 @@ import com.ampznetwork.herobrine.repo.UserTagProviderRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
@@ -15,10 +16,13 @@ import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import org.comroid.api.attr.Named;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 
+@Log
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = AccessLevel.PUBLIC)
 public enum TicketState implements Named {
@@ -66,7 +70,19 @@ public enum TicketState implements Named {
     Completed(true, false, true, true),
     Archived(true, false, true, true) {
         @Override
-        public RestAction<ThreadChannel> applyToChannel(ThreadChannel channel) {
+        public RestAction<ThreadChannel> applyToChannel(ThreadChannel channel, TicketData ticket) {
+            CompletableFuture.supplyAsync(() -> {
+                ticket.archive();
+                return null;
+            }).whenComplete((nil, t) -> {
+                if (t == null) {
+                    log.log(Level.FINE, "Archived ticket " + ticket, t);
+                    return;
+                }
+
+                log.log(Level.WARNING, "Could not archive ticket " + ticket, t);
+            });
+
             return channel.getManager().setArchived(true).map($ -> channel);
         }
     };
@@ -76,7 +92,7 @@ public enum TicketState implements Named {
     boolean privileged;
     boolean locking;
 
-    public RestAction<ThreadChannel> applyToChannel(ThreadChannel channel) {
+    public RestAction<ThreadChannel> applyToChannel(ThreadChannel channel, TicketData ticket) {
         return channel.getManager().setLocked(locking).map($ -> channel);
     }
 

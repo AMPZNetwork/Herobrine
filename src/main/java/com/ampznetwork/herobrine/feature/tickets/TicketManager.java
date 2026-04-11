@@ -73,7 +73,7 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
         var infoMessage = ticket.toInfoMessage(config);
         if (infoMessage != null) channel.sendMessage(infoMessage.build()).queue();
 
-        state.applyToChannel(channel).queue();
+        state.applyToChannel(channel, ticket).queue();
 
         return EmbedTemplate.success("State of ticket was updated to `%s`".formatted(state.name()));
     }
