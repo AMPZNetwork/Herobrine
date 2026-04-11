@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Log
 @Service
@@ -29,14 +30,17 @@ public class UserTagService {
     @Interaction
     @Description("Show all tags of a member")
     public String lookup(@Parameter Member member) {
+        return findTags(member).map(Enum::name)
+                .collect(Streams.orElseGet(() -> Markdown.Code.apply("<none>")))
+                .collect(Collectors.joining("\n- ", "## Tags of %s\n- ".formatted(member), ""));
+    }
+
+    public Stream<UserTag> findTags(Member member) {
         return providers.findAllByGuildId(member.getGuild().getIdLong())
                 .stream()
                 .flatMap(provider -> provider.find(member))
                 .flatMap(UserTag::expand)
                 .distinct()
-                .sorted(Comparator.comparingInt(Enum::ordinal))
-                .map(Enum::name)
-                .collect(Streams.orElseGet(() -> Markdown.Code.apply("<none>")))
-                .collect(Collectors.joining("\n- ", "## Tags of %s\n- ".formatted(member), ""));
+                .sorted(Comparator.comparingInt(Enum::ordinal));
     }
 }
