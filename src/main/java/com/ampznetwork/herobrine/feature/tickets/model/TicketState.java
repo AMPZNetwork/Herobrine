@@ -2,6 +2,7 @@ package com.ampznetwork.herobrine.feature.tickets.model;
 
 import com.ampznetwork.herobrine.component.user.tags.UserTagService;
 import com.ampznetwork.herobrine.component.user.tags.model.UserTag;
+import com.ampznetwork.herobrine.repo.UserTagProviderRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,20 +31,24 @@ public enum TicketState implements Named {
                             TextDisplay.of("#### Ticket Information"),
                             Container.of(TextDisplay.of("### " + ticket.getTitle()), TextDisplay.of(ticket.getDescription())));
 
+            // evaluate whether mentions should be placed
             mentions:
             {
                 var jda = bean(JDA.class);
 
+                // obtain guild
                 var guild = jda.getGuildById(ticket.guildId);
                 if (guild == null) break mentions;
 
+                // obtain guild member
                 var member = guild.getMemberById(ticket.authorId);
                 if (member == null) break mentions;
 
-                var tags = bean(UserTagService.class);
-                if (tags == null) break mentions;
-
-                if (tags.findTags(member).noneMatch(UserTag.VIP::equals)) break mentions;
+                // check if needed configuration is present & member has VIP tag
+                var tags      = bean(UserTagService.class);
+                var providers = bean(UserTagProviderRepository.class);
+                if (tags == null || providers == null) break mentions;
+                if (!providers.findAllByGuildId(guild.getIdLong()).isEmpty() && tags.findTags(member).noneMatch(UserTag.VIP::equals)) break mentions;
 
                 message.addComponents(TextDisplay.of("-# Relevant Mentions: " + TicketData.mentionables(config, ticket.getTopic())
                         .map(IMentionable::getAsMention)
