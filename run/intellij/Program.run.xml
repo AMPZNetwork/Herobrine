@@ -6,6 +6,7 @@
     </envs>
     <module name="Herobrine.main" />
     <option name="SPRING_BOOT_MAIN_CLASS" value="com.ampznetwork.herobrine.Program" />
+    <option name="WORKING_DIRECTORY" value="file:///srv/herobrine"/>
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

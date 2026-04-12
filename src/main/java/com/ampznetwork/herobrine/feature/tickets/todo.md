@@ -11,7 +11,7 @@
 
 # ping only on tickets by vips <DONE>
 
-# ticket transcript to file
+# ticket archive to file <DONE? no message content>
 
 # deeper faq integration?
 
