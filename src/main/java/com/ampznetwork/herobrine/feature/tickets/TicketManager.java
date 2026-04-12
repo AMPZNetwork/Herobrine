@@ -14,6 +14,8 @@ import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.audit.ActionType;
+import net.dv8tion.jda.api.audit.TargetType;
 import net.dv8tion.jda.api.components.label.Label;
 import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textinput.TextInput;
@@ -25,6 +27,8 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.concrete.ThreadChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.GuildChannel;
+import net.dv8tion.jda.api.events.guild.GuildAuditLogEntryCreateEvent;
+import net.dv8tion.jda.api.events.guild.member.GuildMemberRemoveEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.modals.Modal;
@@ -65,15 +69,7 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
         if (state.privileged && !isPrivileged(guild, config, channel, user, ticket.getTopic())) throw Response.of("Only team members can apply this state!");
         else if (user.getIdLong() != ticket.getAuthorId()) throw Response.of("You are not permitted to use this command!");
 
-        newAuditEntry().guild(guild).level(Level.FINE).message("%s is changing state of %s to %s".formatted(user, ticket, state)).queue();
-
-        ticket.setState(state);
-        tickets.save(ticket);
-
-        var infoMessage = ticket.toInfoMessage(config);
-        if (infoMessage != null) channel.sendMessage(infoMessage.build()).queue();
-
-        state.applyToChannel(channel, ticket).queue();
+        TicketOperator.changeState(ticket, state, config, channel, user, newAuditEntry().guild(guild));
 
         return EmbedTemplate.success("State of ticket was updated to `%s`".formatted(state.name()));
     }
@@ -109,6 +105,53 @@ public class TicketManager implements AuditLogSender, ErrorLogSender {
 
         // open ticket thread
         openTicket(event, guild, topic, title, description);
+    }
+
+    @EventListener
+    public void on(@NonNull GuildMemberRemoveEvent event) {
+        var guild = event.getGuild();
+        var user  = event.getUser();
+
+        var config = configs.findById(guild.getIdLong()).orElse(null);
+        if (config == null) return;
+
+        for (var ticket : tickets.findAllByGuildIdAndAuthorId(guild.getIdLong(), user.getIdLong())) {
+            var thread = event.getJDA().getThreadChannelById(ticket.getThreadId());
+            if (thread == null) {
+                newErrorEntry().level(Level.WARNING)
+                        .message("Could not auto-close ticket #%s because its thread channel is nonexistent".formatted(ticket.getTicketId()))
+                        .queue();
+                continue;
+            }
+
+            try {
+                TicketOperator.changeState(ticket, TicketState.Incomplete, config, thread, user, newAuditEntry().guild(guild));
+            } catch (Response response) {
+                newErrorEntry().level(Level.WARNING).message("Could not auto-close ticket #%s, reason: ".formatted(response.getContent())).queue();
+            }
+
+            newAuditEntry().level(Level.INFO).message("Auto-closed ticket #%d because the author left the server".formatted(ticket.getTicketId())).queue();
+        }
+    }
+
+    @EventListener
+    public void on(@NonNull GuildAuditLogEntryCreateEvent event) {
+        var guild = event.getGuild();
+
+        var entry = event.getEntry();
+        if (entry.getType() != ActionType.CHANNEL_DELETE || entry.getTargetType() != TargetType.CHANNEL) return;
+        var channelId = entry.getTargetIdLong();
+
+        var config = configs.findById(guild.getIdLong()).orElse(null);
+        if (config == null) return;
+
+        tickets.findByGuildIdAndThreadId(guild.getIdLong(), channelId)
+                .ifPresent(ticket -> TicketOperator.changeState(ticket,
+                        TicketState.Incomplete,
+                        config,
+                        null,
+                        event.getEntry().getUser(),
+                        newAuditEntry().guild(guild)));
     }
 
     private void openTicket(@NonNull ModalInteractionEvent event, Guild guild, TicketTopic topic, String title, String description) {

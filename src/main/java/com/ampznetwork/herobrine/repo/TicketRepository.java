@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.Optional;
 
 @Repository
@@ -24,4 +25,6 @@ public interface TicketRepository extends CrudRepository<TicketData, TicketData.
     @Transactional
     @Query("update TicketData td set td.topic = null where td.guildId = :guildId and td.topic = :topic")
     void dropTopicByGuildIdAndTopic(long guildId, TicketTopic topic);
+
+    Collection<TicketData> findAllByGuildIdAndAuthorId(long guildId, long authorId);
 }

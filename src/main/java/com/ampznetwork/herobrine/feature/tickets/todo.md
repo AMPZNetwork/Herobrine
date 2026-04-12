@@ -5,7 +5,8 @@
 
 # auto close on triggers
 
-- user left server
+- user left server <DONE>
+- thread channel deleted <DONE>
 - user inactive for >48h (or other duration)
 - ... come up with more
 
