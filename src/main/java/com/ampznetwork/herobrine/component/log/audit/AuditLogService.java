@@ -1,7 +1,7 @@
-package com.ampznetwork.herobrine.feature.auditlog;
+package com.ampznetwork.herobrine.component.log.audit;
 
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogPreferences;
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogPreferences;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import com.ampznetwork.herobrine.repo.AuditLogPreferenceRepo;
 import lombok.Builder;
 import lombok.extern.java.Log;

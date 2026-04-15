@@ -1,10 +1,10 @@
 package com.ampznetwork.herobrine.feature.accountlink;
 
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.accountlink.model.LinkType;
 import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkRoleConfiguration;
 import com.ampznetwork.herobrine.feature.accountlink.model.entity.LinkedAccount;
 import com.ampznetwork.herobrine.feature.accountlink.model.event.AccountLinkEvent;
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
 import com.ampznetwork.herobrine.repo.LinkRoleConfigRepository;
 import com.ampznetwork.herobrine.repo.LinkedAccountRepository;
 import lombok.extern.java.Log;

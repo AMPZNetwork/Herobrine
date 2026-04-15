@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component;
+package com.ampznetwork.herobrine.component.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

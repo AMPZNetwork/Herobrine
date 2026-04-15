@@ -2,7 +2,7 @@ package com.ampznetwork.herobrine.feature.template;
 
 import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateLexer;
 import com.ampznetwork.herobrine.antlr.DiscordMessageTemplateParser;
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.template.context.Reference;
 import com.ampznetwork.herobrine.feature.template.context.TemplateContext;
 import com.ampznetwork.herobrine.feature.template.model.decl.Declaration;

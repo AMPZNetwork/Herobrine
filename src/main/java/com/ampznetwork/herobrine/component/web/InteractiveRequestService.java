@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.component.web;
 
-import com.ampznetwork.herobrine.component.MaintenanceProvider;
+import com.ampznetwork.herobrine.component.core.MaintenanceProvider;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.entities.User;
 import org.comroid.annotations.Default;

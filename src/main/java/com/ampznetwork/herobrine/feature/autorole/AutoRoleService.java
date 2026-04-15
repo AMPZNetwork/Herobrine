@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.feature.autorole;
 
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.autorole.model.AutoRoleMapping;
 import com.ampznetwork.herobrine.repo.AutoRoleRepository;
 import com.ampznetwork.herobrine.trigger.DiscordTrigger;

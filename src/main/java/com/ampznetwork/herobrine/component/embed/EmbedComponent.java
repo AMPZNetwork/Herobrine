@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.embed;
+package com.ampznetwork.herobrine.component.embed;
 
 import lombok.AccessLevel;
 import lombok.Getter;

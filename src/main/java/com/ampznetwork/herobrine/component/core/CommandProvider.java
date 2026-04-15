@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component;
+package com.ampznetwork.herobrine.component.core;
 
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;

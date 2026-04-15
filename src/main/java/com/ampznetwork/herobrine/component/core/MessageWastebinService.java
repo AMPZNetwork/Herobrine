@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature;
+package com.ampznetwork.herobrine.component.core;
 
 import com.ampznetwork.herobrine.util.Constant;
 import lombok.extern.java.Log;

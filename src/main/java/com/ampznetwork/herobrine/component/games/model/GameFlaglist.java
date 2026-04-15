@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.games.model;
+package com.ampznetwork.herobrine.component.games.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

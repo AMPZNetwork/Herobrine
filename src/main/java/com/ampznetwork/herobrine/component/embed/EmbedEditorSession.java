@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.embed;
+package com.ampznetwork.herobrine.component.embed;
 
 import lombok.Value;
 import net.dv8tion.jda.api.EmbedBuilder;

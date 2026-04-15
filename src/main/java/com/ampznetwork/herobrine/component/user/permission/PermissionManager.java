@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.component.user.permission;
 
-import com.ampznetwork.herobrine.component.MaintenanceProvider;
+import com.ampznetwork.herobrine.component.core.MaintenanceProvider;
 import com.ampznetwork.herobrine.component.user.permission.abstr.PermissionAssignment;
 import com.ampznetwork.herobrine.component.user.permission.model.HerobrinePermission;
 import com.ampznetwork.herobrine.component.user.permission.model.MemberPermissionAssignment;

@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.feature.tickets;
 
-import com.ampznetwork.herobrine.feature.auditlog.AuditLogService;
+import com.ampznetwork.herobrine.component.log.audit.AuditLogService;
 import com.ampznetwork.herobrine.feature.tickets.model.TicketConfiguration;
 import com.ampznetwork.herobrine.feature.tickets.model.TicketData;
 import com.ampznetwork.herobrine.feature.tickets.model.TicketState;

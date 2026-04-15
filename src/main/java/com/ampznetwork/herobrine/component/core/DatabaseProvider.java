@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.component;
+package com.ampznetwork.herobrine.component.core;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
 import org.mariadb.jdbc.Driver;

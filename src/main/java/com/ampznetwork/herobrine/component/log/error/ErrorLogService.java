@@ -1,7 +1,7 @@
-package com.ampznetwork.herobrine.feature.errorlog;
+package com.ampznetwork.herobrine.component.log.error;
 
-import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogPreferences;
-import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
+import com.ampznetwork.herobrine.component.log.error.model.ErrorLogPreferences;
+import com.ampznetwork.herobrine.component.log.error.model.ErrorLogSender;
 import com.ampznetwork.herobrine.repo.ErrorLogPreferenceRepo;
 import lombok.Builder;
 import lombok.extern.java.Log;

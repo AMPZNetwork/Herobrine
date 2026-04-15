@@ -1,4 +1,4 @@
-package com.ampznetwork.herobrine.feature.errorlog.model;
+package com.ampznetwork.herobrine.component.log.error.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

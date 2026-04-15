@@ -1,7 +1,7 @@
 package com.ampznetwork.herobrine.feature.ranksync;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import lombok.NoArgsConstructor;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.EmbedBuilder;

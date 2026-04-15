@@ -1,6 +1,6 @@
-package com.ampznetwork.herobrine.feature.presence;
+package com.ampznetwork.herobrine.component.presence;
 
-import com.ampznetwork.herobrine.component.MaintenanceProvider;
+import com.ampznetwork.herobrine.component.core.MaintenanceProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;

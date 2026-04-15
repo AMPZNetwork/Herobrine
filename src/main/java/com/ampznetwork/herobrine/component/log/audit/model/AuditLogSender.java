@@ -1,6 +1,6 @@
-package com.ampznetwork.herobrine.feature.auditlog.model;
+package com.ampznetwork.herobrine.component.log.audit.model;
 
-import com.ampznetwork.herobrine.feature.auditlog.AuditLogService;
+import com.ampznetwork.herobrine.component.log.audit.AuditLogService;
 
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 

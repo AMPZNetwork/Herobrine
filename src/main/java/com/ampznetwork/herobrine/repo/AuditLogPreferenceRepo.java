@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.repo;
 
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogPreferences;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogPreferences;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;

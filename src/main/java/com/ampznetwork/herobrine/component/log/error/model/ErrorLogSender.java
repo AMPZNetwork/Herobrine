@@ -1,6 +1,6 @@
-package com.ampznetwork.herobrine.feature.errorlog.model;
+package com.ampznetwork.herobrine.component.log.error.model;
 
-import com.ampznetwork.herobrine.feature.errorlog.ErrorLogService;
+import com.ampznetwork.herobrine.component.log.error.ErrorLogService;
 import net.dv8tion.jda.api.entities.Guild;
 import org.comroid.api.func.exc.ThrowingRunnable;
 import org.comroid.api.func.exc.ThrowingSupplier;

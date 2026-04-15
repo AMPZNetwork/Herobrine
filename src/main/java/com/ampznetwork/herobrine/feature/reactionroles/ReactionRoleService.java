@@ -1,6 +1,6 @@
 package com.ampznetwork.herobrine.feature.reactionroles;
 
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import com.ampznetwork.herobrine.feature.reactionroles.model.ReactionRoleBinding;
 import com.ampznetwork.herobrine.feature.reactionroles.model.ReactionRoleSet;
 import com.ampznetwork.herobrine.repo.ReactionSetRepo;

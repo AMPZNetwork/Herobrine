@@ -1,6 +1,6 @@
-package com.ampznetwork.herobrine.feature.embed;
+package com.ampznetwork.herobrine.component.embed;
 
-import com.ampznetwork.herobrine.feature.auditlog.model.AuditLogSender;
+import com.ampznetwork.herobrine.component.log.audit.model.AuditLogSender;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;

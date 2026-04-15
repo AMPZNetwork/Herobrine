@@ -1,7 +1,7 @@
-package com.ampznetwork.herobrine.component;
+package com.ampznetwork.herobrine.component.core;
 
 import com.ampznetwork.herobrine.component.config.model.Config;
-import com.ampznetwork.herobrine.feature.errorlog.model.ErrorLogSender;
+import com.ampznetwork.herobrine.component.log.error.model.ErrorLogSender;
 import com.ampznetwork.herobrine.util.ApplicationContextProvider;
 import lombok.extern.java.Log;
 import net.dv8tion.jda.api.JDA;

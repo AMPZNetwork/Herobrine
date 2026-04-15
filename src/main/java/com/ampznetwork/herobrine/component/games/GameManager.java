@@ -1,9 +1,9 @@
-package com.ampznetwork.herobrine.feature.games;
+package com.ampznetwork.herobrine.component.games;
 
+import com.ampznetwork.herobrine.component.games.model.Game;
+import com.ampznetwork.herobrine.component.games.model.GameFlaglist;
 import com.ampznetwork.herobrine.component.user.permission.PermissionManager;
 import com.ampznetwork.herobrine.component.user.permission.model.HerobrinePermission;
-import com.ampznetwork.herobrine.feature.games.model.Game;
-import com.ampznetwork.herobrine.feature.games.model.GameFlaglist;
 import com.ampznetwork.herobrine.repo.GameFlagListRepository;
 import com.ampznetwork.herobrine.repo.GameRepository;
 import com.ampznetwork.herobrine.util.EmbedTemplate;
