@@ -4,6 +4,7 @@ import com.ampznetwork.herobrine.component.team.model.SupportLevel;
 import com.ampznetwork.herobrine.component.team.model.TeamCategory;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import lombok.AllArgsConstructor;
@@ -28,8 +29,8 @@ public class TeamRoleInfo {
     @Id                          long               guildId;
     @Id                          long               roleId;
     @Nullable                    TeamCategory       teamCategory;
-    @Nullable                    SupportLevel       supportLevel;
-    @ElementCollection @Singular Set<@NonNull Long> inherits = new HashSet<>();
+    @Nullable                                             SupportLevel       supportLevel;
+    @ElementCollection(fetch = FetchType.EAGER) @Singular Set<@NonNull Long> inherits = new HashSet<>();
 
     public record Key(long guildId, long roleId) {
         public Key(Role role) {
