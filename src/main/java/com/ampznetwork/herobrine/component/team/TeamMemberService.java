@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.UserSnowflake;
+import org.comroid.annotations.Description;
 import org.comroid.api.func.util.Streams;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
@@ -31,11 +32,13 @@ public class TeamMemberService {
     @Autowired TeamMemberInfoRepository members;
 
     @Interaction
+    @Description("Check your own team status")
     public Optional<EmbedBuilder> myself(Member member) {
         return members.findById(new TeamMemberInfo.Key(member)).or(() -> init(member)).map(TeamMemberInfo::toEmbed);
     }
 
     @Interaction(definitions = { @ContextDefinition(key = JdaAdapter.KEY_PERMISSION, expr = "MANAGE_ROLES") })
+    @Description("Lookup another users team status")
     public Optional<EmbedBuilder> lookup(Guild guild, @Parameter UserSnowflake user) {
         return Optional.ofNullable(guild.getMember(user)).flatMap(this::myself);
     }

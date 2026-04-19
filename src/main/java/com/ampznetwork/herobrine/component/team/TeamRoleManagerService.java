@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.modals.Modal;
+import org.comroid.annotations.Description;
 import org.comroid.interaction.adapter.jda.JdaAdapter;
 import org.comroid.interaction.annotation.ContextDefinition;
 import org.comroid.interaction.annotation.ContextFilter;
@@ -45,11 +46,13 @@ public class TeamRoleManagerService {
     @Autowired TeamRoleInfoRepository roles;
 
     @Interaction
+    @Description("Create a new team role configuration")
     public Modal.Builder create(Guild guild) {
         return openEditor(null);
     }
 
     @Interaction
+    @Description("Edit an existing team role configuration")
     public Optional<Modal.Builder> edit(@Parameter Role role) {
         return roles.findById(new TeamRoleInfo.Key(role)).map(this::openEditor);
     }

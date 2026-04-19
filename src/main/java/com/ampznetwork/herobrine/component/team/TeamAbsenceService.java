@@ -38,6 +38,7 @@ public class TeamAbsenceService {
     @Autowired TeamMemberInfoRepository members;
 
     @Interaction
+    @Description("Create a new absence period")
     public Optional<EmbedBuilder> create(
             Member member, @Parameter @Description("A short description for the absence") String reason,
             @Parameter @Description("`dd.mm.` with optional `hh` or `hh:mm` format") String start,
@@ -63,6 +64,7 @@ public class TeamAbsenceService {
     }
 
     @Interaction
+    @Description("Remove an existing absence period")
     public void remove(Member member, @Parameter(completion = @Completion(provider = AbsenceInfo.ContextualReasonProvider.class)) String reason) {
         var key = new AbsenceInfo.Key(member, reason);
 
