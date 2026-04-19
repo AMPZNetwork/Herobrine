@@ -125,6 +125,7 @@ public class TeamRoleManagerService {
                                                 .map(EntitySelectMenu.DefaultValue::role)
                                                 .toList())
                                         .setRequiredRange(0, 25)
+                                        .setRequired(false)
                                         .build()));
     }
 }
