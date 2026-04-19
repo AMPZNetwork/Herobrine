@@ -124,7 +124,7 @@ public class TeamRoleManagerService {
                                                 .flatMap(it -> it.getInherits().stream())
                                                 .map(EntitySelectMenu.DefaultValue::role)
                                                 .toList())
-                                        .setRequiredRange(0, 999)
+                                        .setRequiredRange(0, 25)
                                         .build()));
     }
 }
