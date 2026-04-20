@@ -20,6 +20,7 @@ import org.comroid.interaction.annotation.ContextFilter;
 import org.comroid.interaction.annotation.Interaction;
 import org.comroid.interaction.annotation.Parameter;
 import org.comroid.interaction.model.Response;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -39,7 +40,7 @@ import java.util.stream.Stream;
 public class TeamAbsenceService {
     public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("[dd.MM[.[yyyy]]][ ][kk[:mm]]");
 
-    public static final String INTERACTION_CREATE = "tas_create";
+    public static final String INTERACTION_CREATE = "tas_create_";
     public static final String INTERACTION_EDIT   = "tas_edit_";
 
     public static final String OPTION_REASON            = "option_reason";
@@ -57,8 +58,8 @@ public class TeamAbsenceService {
 
     @Interaction
     @Description("Create a new absence period")
-    public Modal.Builder create(Member member) {
-        return openEditor(null);
+    public Modal.Builder create(Member member, @Parameter String reason) {
+        return openEditor(reason, null);
     }
 
     @Interaction
@@ -67,7 +68,7 @@ public class TeamAbsenceService {
             Member member,
             @Parameter(completion = @Completion(provider = AbsenceInfo.ContextualReasonProvider.class)) String reason
     ) {
-        return absences.findById(new AbsenceInfo.Key(member, reason)).map(this::openEditor);
+        return absences.findById(new AbsenceInfo.Key(member, reason)).map(info -> openEditor(info.getReason(), info));
     }
 
     @Interaction
@@ -85,10 +86,10 @@ public class TeamAbsenceService {
         var modalId = event.getModalId();
         if (Stream.of(INTERACTION_CREATE, INTERACTION_EDIT).noneMatch(modalId::startsWith)) return;
 
-        var                           member    = Objects.requireNonNull(event.getMember(), "guild member");
-        var                           create    = INTERACTION_CREATE.equals(modalId);
-        var                           oldReason = create ? null : modalId.substring(INTERACTION_EDIT.length() + 1);
-        var                           oldKey    = create ? null : new AbsenceInfo.Key(member, oldReason);
+        var member = Objects.requireNonNull(event.getMember(), "guild member");
+        var create = INTERACTION_CREATE.equals(modalId);
+        var reason = modalId.substring((create ? INTERACTION_CREATE : INTERACTION_EDIT).length() + 2);
+        var key    = create ? null : new AbsenceInfo.Key(member, reason);
         AbsenceInfo.Builder           absenceBuilder;
         AbsenceInfo.TimeFrame.Builder timeBuilder;
 
@@ -96,9 +97,9 @@ public class TeamAbsenceService {
             absenceBuilder = AbsenceInfo.builder().guildId(member.getGuild().getIdLong()).userId(member.getIdLong());
             timeBuilder    = AbsenceInfo.TimeFrame.builder();
         } else {
-            var old = absences.findById(oldKey).orElse(null);
+            var old = absences.findById(key).orElse(null);
             if (old == null) {
-                event.reply("No absence found with reason " + oldReason).setEphemeral(true).queue();
+                event.reply("No absence found with reason " + reason).setEphemeral(true).queue();
                 return;
             }
 
@@ -138,7 +139,7 @@ public class TeamAbsenceService {
         var absence    = absenceBuilder.timeFrame(timeFrame).build();
         var memberInfo = members.findById(new TeamMemberInfo.Key(member)).orElseGet(() -> memberService.init(member).orElseThrow());
 
-        if (!create && absences.existsById(oldKey)) absences.deleteById(oldKey);
+        if (!create && absences.existsById(key)) absences.deleteById(key);
 
         absences.save(absence);
         memberInfo.getAbsences().add(absence);
@@ -147,14 +148,12 @@ public class TeamAbsenceService {
         event.replyEmbeds(absence.toEmbed().setTitle("New absence entry created").setColor(Constant.COLOR_SUCCESS).build()).queue();
     }
 
-    private Modal.Builder openEditor(@Nullable AbsenceInfo info) {
+    private Modal.Builder openEditor(@NonNull String reason, @Nullable AbsenceInfo info) {
         var create = info == null;
         var opt    = Optional.ofNullable(info);
 
-        return Modal.create(create ? INTERACTION_CREATE : INTERACTION_EDIT, "Modifying absence")
-                .addComponents(Label.of("Reason",
-                                TextInput.create(OPTION_REASON, TextInputStyle.SHORT).setValue(opt.map(AbsenceInfo::getReason).orElse(null)).build()),
-                        Label.of("Beginning",
+        return Modal.create((create ? INTERACTION_CREATE : INTERACTION_EDIT) + reason, "Modifying absence")
+                .addComponents(Label.of("Beginning",
                                 TextInput.create(OPTION_TIME_START, TextInputStyle.SHORT)
                                         .setValue(opt.map(AbsenceInfo::getTimeFrame)
                                                 .map(AbsenceInfo.TimeFrame::startDateTime)

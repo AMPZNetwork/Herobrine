@@ -4,6 +4,7 @@ import com.ampznetwork.herobrine.component.team.role.TeamRoleInfo;
 import com.ampznetwork.herobrine.repo.TeamRoleInfoRepository;
 import com.ampznetwork.herobrine.util.EmbedTemplate;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.OneToMany;
@@ -32,9 +33,9 @@ import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
 @AllArgsConstructor
 @IdClass(TeamMemberInfo.Key.class)
 public class TeamMemberInfo {
-    @Id        long             guildId;
-    @Id        long             userId;
-    @OneToMany Set<AbsenceInfo> absences;
+    @Id                                 long             guildId;
+    @Id                                 long             userId;
+    @OneToMany(fetch = FetchType.EAGER) Set<AbsenceInfo> absences;
 
     public Optional<AbsenceInfo> findAbsence() {
         return absences.stream().filter(AbsenceInfo::isAcute).findAny();
