@@ -87,7 +87,7 @@ public class TeamAbsenceService {
         if (Stream.of(INTERACTION_CREATE, INTERACTION_EDIT).noneMatch(modalId::startsWith)) return;
 
         var member = Objects.requireNonNull(event.getMember(), "guild member");
-        var create = INTERACTION_CREATE.equals(modalId);
+        var create = modalId.startsWith(INTERACTION_CREATE);
         var reason = modalId.substring((create ? INTERACTION_CREATE : INTERACTION_EDIT).length() + 2);
         var key    = create ? null : new AbsenceInfo.Key(member, reason);
         AbsenceInfo.Builder           absenceBuilder;
