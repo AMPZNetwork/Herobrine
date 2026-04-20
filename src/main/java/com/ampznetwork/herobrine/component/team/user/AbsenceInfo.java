@@ -7,10 +7,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.components.selections.SelectOption;
 import net.dv8tion.jda.api.entities.Member;
 import org.comroid.annotations.Instance;
 import org.comroid.api.attr.Named;
@@ -37,8 +40,10 @@ import static java.time.LocalDateTime.*;
  * god save us
  */
 @Entity
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder(toBuilder = true)
 @IdClass(AbsenceInfo.Key.class)
 public class AbsenceInfo {
     @Id long   guildId;
@@ -64,6 +69,7 @@ public class AbsenceInfo {
                 .addField("Repeats", timeFrame.repetition == null ? "no" : timeFrame.repetition.getName(), false);
     }
 
+    @Getter
     @RequiredArgsConstructor
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     public enum Repetition implements Named {
@@ -74,6 +80,7 @@ public class AbsenceInfo {
 
         ChronoUnit        unit;
         DateTimeFormatter formatter;
+        final SelectOption selectOption = SelectOption.of(name(), name());
 
         public Stream<TimeFrame> repeat(TimeFrame timeFrame) {
             return repeat(timeFrame, 99_999);
@@ -116,6 +123,7 @@ public class AbsenceInfo {
     }
 
     @Embeddable
+    @lombok.Builder(toBuilder = true)
     public record TimeFrame(
             LocalDateTime startDateTime,
             @Nullable LocalDateTime endDateTime,
