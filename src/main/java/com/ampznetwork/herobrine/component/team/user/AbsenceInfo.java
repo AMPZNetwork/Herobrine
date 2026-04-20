@@ -23,12 +23,13 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.function.BiFunction;
+import java.time.temporal.ChronoUnit;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.ampznetwork.herobrine.util.ApplicationContextProvider.*;
+import static java.time.LocalDateTime.*;
 
 /**
  * todo: the entire repetition system is WIP and subject to further optimization
@@ -66,13 +67,13 @@ public class AbsenceInfo {
     @RequiredArgsConstructor
     @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
     public enum Repetition implements Named {
-        Daily(LocalDateTime::plusDays, DateTimeFormatter.ofPattern("HH:mm")),
-        Weekly(LocalDateTime::plusWeeks, DateTimeFormatter.ofPattern("E HH")),
-        Monthly(LocalDateTime::plusMonths, DateTimeFormatter.ofPattern("dd. HH")),
-        Yearly(LocalDateTime::plusYears, DateTimeFormatter.ofPattern("dd.MM."));
+        Daily(ChronoUnit.DAYS, DateTimeFormatter.ofPattern("HH:mm")),
+        Weekly(ChronoUnit.WEEKS, DateTimeFormatter.ofPattern("E HH")),
+        Monthly(ChronoUnit.MONTHS, DateTimeFormatter.ofPattern("dd. HH")),
+        Yearly(ChronoUnit.YEARS, DateTimeFormatter.ofPattern("dd.MM."));
 
-        BiFunction<LocalDateTime, @NonNull Integer, LocalDateTime> accumulator;
-        DateTimeFormatter                                          formatter;
+        ChronoUnit        unit;
+        DateTimeFormatter formatter;
 
         public Stream<TimeFrame> repeat(TimeFrame timeFrame) {
             return repeat(timeFrame, 99_999);
@@ -80,14 +81,23 @@ public class AbsenceInfo {
 
         /// god help us, hope this wont give massive overhead later
         public Stream<TimeFrame> repeat(TimeFrame timeFrame, int futureRepetitions) {
-            return IntStream.range(0, 99_999)
+            return IntStream.range(0, remainingRepetitions(timeFrame.repeatUntil))
                     .mapToObj(offset -> accumulate(timeFrame, offset))
                     .filter(Predicate.not(TimeFrame::isPassed))
                     .limit(futureRepetitions);
         }
 
-        private TimeFrame accumulate(TimeFrame original, int n) {
-            return new TimeFrame(accumulator.apply(original.startDateTime, n), accumulator.apply(original.endDateTime, n), original.repetition);
+        /// todo: test this
+        private int remainingRepetitions(@Nullable LocalDateTime until) {
+            return until == null ? Integer.MAX_VALUE : Math.toIntExact(unit.between(now(), until));
+        }
+
+        private TimeFrame accumulate(TimeFrame original, int offset) {
+            return new TimeFrame(original.startDateTime.plus(offset, unit),
+                    original.endDateTime == null ? null : original.endDateTime.plus(offset, unit),
+                    this,
+                    original.repeatUntil,
+                    original.entireDay);
         }
     }
 
@@ -107,17 +117,26 @@ public class AbsenceInfo {
 
     @Embeddable
     public record TimeFrame(
-            LocalDateTime startDateTime, @Nullable LocalDateTime endDateTime, @Nullable Repetition repetition
+            LocalDateTime startDateTime,
+            @Nullable LocalDateTime endDateTime,
+            @Nullable Repetition repetition,
+            @Nullable LocalDateTime repeatUntil,
+            boolean entireDay
     ) {
         public static final DateTimeFormatter RECENT = DateTimeFormatter.ofPattern("HH:mm");
 
         public boolean isPassed() {
-            return endDateTime != null && endDateTime.isBefore(LocalDateTime.now());
+            return entireDay
+                   ? (endDateTime == null ? startDateTime : endDateTime).withHour(23).withMinute(59).isBefore(now())
+                   : endDateTime != null && endDateTime.isBefore(now());
         }
 
         public boolean isAcute() {
-            var now = LocalDateTime.now();
-            return startDateTime.isAfter(now) && !isPassed();
+            return (entireDay ? startDateTime.withHour(23).withMinute(59) : startDateTime).isAfter(now()) && !isPassed();
+        }
+
+        public boolean isExpired() {
+            return repetition == null ? isPassed() : repeatUntil != null && repeat().allMatch(TimeFrame::isPassed);
         }
 
         public Stream<TimeFrame> repeat() {
